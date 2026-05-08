@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圖片審核系統</title>
+    <style>
+        :root {
+            --bg-color: #f8f8f8;
+            --surface-color: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #6b6b6b;
+            --border-color: #e5e5e5;
+            --accent-color: #D97757; /* Claude-like serif accent */
+            --hover-bg: #f3f3f3;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            transition: background 0.3s ease;
+        }
+
+        body.home-bg {
+            /* 預設讀取目錄下的 background.jpg 作為首頁背景 */
+            background: url('background.jpg') center/cover no-repeat;
+        }
+
+        h1 {
+            font-weight: 500;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            color: var(--text-primary);
+        }
+
+        .container {
+            background-color: rgba(255, 255, 255, 0.9); /* 加入半透明背景讓文字可讀 */
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+            text-align: center;
+        }
+
+        /* Upload Section */
+        #upload-section {
+            display: block;
+        }
+
+        .upload-desc {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+            color: var(--text-secondary);
+        }
+
+        button.primary-btn {
+            background-color: var(--text-primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 24px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        button.primary-btn:hover {
+            opacity: 0.85;
+        }
+
+        /* Review Section */
+        #review-section {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        #progress {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* 實時統計區塊 */
+        #live-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            background: var(--surface-color);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .live-stat-item {
+            font-weight: 500;
+        }
+
+        .live-stat-item span {
+            color: var(--text-secondary);
+            font-weight: normal;
+        }
+
+        #image-container {
+            width: 100%;
+            height: 60vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg-color);
+            border-radius: 8px;
+            margin-bottom: 24px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        #current-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .rate-btn {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .rate-btn.undo-btn {
+            background-color: transparent;
+            color: var(--text-secondary);
+            border-style: dashed;
+        }
+
+        .rate-btn:hover {
+            background-color: var(--hover-bg);
+            border-color: #ccc;
+        }
+
+        .rate-btn span {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-weight: normal;
+        }
+
+        .keyboard-hint {
+            margin-top: 24px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* Summary Section */
+        #summary-section {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            text-align: left;
+        }
+
+        .summary-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+            margin-bottom: 20px;
+        }
+
+        .summary-card h2 {
+            margin-top: 0;
+            font-weight: 500;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background-color: var(--bg-color);
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .grade-badge {
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background-color: var(--hover-bg);
+        }
+    </style>
+</head>
+<body class="home-bg">
+
+    <h1>圖片審核系統</h1>
+
+    <div class="container" id="upload-section">
+        <p class="upload-desc">請選擇包含圖片的資料夾或多張圖片進行審核</p>
+        <input type="file" id="image-input" multiple accept="image/*" webkitdirectory directory>
+        <br><br>
+        <button class="primary-btn" onclick="startReview()">開始審核</button>
+    </div>
+
+    <div id="review-section">
+        <div class="review-header">
+            <div id="progress">進度: 0 / 0</div>
+            <div id="live-stats">
+                <div class="live-stat-item">A: <span id="stat-A">0</span></div>
+                <div class="live-stat-item">B: <span id="stat-B">0</span></div>
+                <div class="live-stat-item">C: <span id="stat-C">0</span></div>
+                <div class="live-stat-item">F: <span id="stat-F">0</span></div>
+            </div>
+        </div>
+        <div id="image-container">
+            <img id="current-image" src="" alt="待審核圖片">
+        </div>
+        <div class="btn-group">
+            <button class="rate-btn undo-btn" onclick="undo()" id="undo-btn" disabled>↩ 復原 <span>(Backspace)</span></button>
+            <button class="rate-btn" onclick="rateImage('A')">A <span>(鍵盤 1)</span></button>
+            <button class="rate-btn" onclick="rateImage('B')">B <span>(鍵盤 2)</span></button>
+            <button class="rate-btn" onclick="rateImage('C')">C <span>(鍵盤 3)</span></button>
+            <button class="rate-btn" onclick="rateImage('F')">F <span>(鍵盤 0)</span></button>
+        </div>
+        <p class="keyboard-hint">支援鍵盤快速評分：1=A, 2=B, 3=C, 0=F，按 Backspace 復原上一張</p>
+    </div>
+
+    <div id="summary-section">
+        <div class="summary-card">
+            <h2>審核總結</h2>
+            <div id="summary-results"></div>
+            <div style="text-align: center; margin-top: 30px;">
+                <button class="primary-btn" onclick="location.reload()">重新開始</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let images = [];
+        let currentIndex = 0;
+        let results = [];
+        let counts = { A: 0, B: 0, C: 0, F: 0 };
+
+        function startReview() {
+            const input = document.getElementById('image-input');
+            const files = Array.from(input.files).filter(file => file.type.startsWith('image/'));
+
+            if (files.length === 0) {
+                alert('請先選擇圖片！');
+                return;
+            }
+
+            images = files;
+            currentIndex = 0;
+            results = [];
+            counts = { A: 0, B: 0, C: 0, F: 0 };
+            updateLiveStatsUI();
+
+            // 移除首頁背景 class，使審核畫面乾淨
+            document.body.classList.remove('home-bg');
+
+            document.getElementById('upload-section').style.display = 'none';
+            document.getElementById('review-section').style.display = 'block';
+            
+            showImage();
+        }
+
+        function showImage() {
+            document.getElementById('undo-btn').disabled = currentIndex === 0;
+
+            if (currentIndex >= images.length) {
+                showSummary();
+                return;
+            }
+
+            const file = images[currentIndex];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                document.getElementById('current-image').src = e.target.result;
+            }
+            
+            reader.readAsDataURL(file);
+            document.getElementById('progress').innerText = `進度: ${currentIndex + 1} / ${images.length} - 檔案: ${file.name}`;
+        }
+
+        function rateImage(grade) {
+            results.push({
+                name: images[currentIndex].name,
+                grade: grade
+            });
+            
+            counts[grade]++;
+            updateLiveStatsUI();
+            
+            currentIndex++;
+            showImage();
+        }
+
+        function undo() {
+            if (currentIndex > 0) {
+                const lastResult = results.pop();
+                counts[lastResult.grade]--;
+                updateLiveStatsUI();
+                
+                currentIndex--;
+                
+                // 如果已經顯示了 summary，需要隱藏並顯示 review
+                if (document.getElementById('summary-section').style.display === 'block') {
+                    document.getElementById('summary-section').style.display = 'none';
+                    document.getElementById('review-section').style.display = 'block';
+                }
+                
+                showImage();
+            }
+        }
+
+        function updateLiveStatsUI() {
+            document.getElementById('stat-A').innerText = counts.A;
+            document.getElementById('stat-B').innerText = counts.B;
+            document.getElementById('stat-C').innerText = counts.C;
+            document.getElementById('stat-F').innerText = counts.F;
+        }
+
+        function showSummary() {
+            document.getElementById('review-section').style.display = 'none';
+            document.getElementById('summary-section').style.display = 'block';
+
+            let detailsHtml = '<h3 style="margin-top: 30px; font-weight: 500;">詳細清單：</h3>';
+
+            results.forEach((res, index) => {
+                detailsHtml += `<div class="summary-item"><span>${index + 1}. ${res.name}</span> <span class="grade-badge">${res.grade}</span></div>`;
+            });
+
+            let statsHtml = `
+                <div class="stats-grid">
+                    <div class="stat-box"><div class="stat-label">A 級</div><div class="stat-value">${counts.A}</div></div>
+                    <div class="stat-box"><div class="stat-label">B 級</div><div class="stat-value">${counts.B}</div></div>
+                    <div class="stat-box"><div class="stat-label">C 級</div><div class="stat-value">${counts.C}</div></div>
+                    <div class="stat-box"><div class="stat-label">F 級</div><div class="stat-value">${counts.F}</div></div>
+                </div>
+                <p style="text-align: right; color: var(--text-secondary); font-size: 0.9rem;">總計: ${results.length} 張</p>
+                <div style="margin-top:20px; text-align: right;">
+                    <button class="rate-btn undo-btn" onclick="undo()">↩ 修改上一張</button>
+                </div>
+            `;
+
+            document.getElementById('summary-results').innerHTML = statsHtml + detailsHtml;
+        }
+
+        document.addEventListener('keydown', function(event) {
+            if (document.getElementById('review-section').style.display === 'block' || document.getElementById('summary-section').style.display === 'block') {
+                if (event.key === 'Backspace') {
+                    undo();
+                } else if (document.getElementById('review-section').style.display === 'block') {
+                    const keyMap = {
+                        '1': 'A',
+                        '2': 'B',
+                        '3': 'C',
+                        '0': 'F'
+                    };
+                    
+                    if (keyMap[event.key]) {
+                        rateImage(keyMap[event.key]);
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
