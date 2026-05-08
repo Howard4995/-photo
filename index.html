@@ -138,6 +138,13 @@
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
+            cursor: zoom-in;
+            transition: transform 0.15s ease-out;
+        }
+
+        #current-image.zoomed {
+            cursor: zoom-out;
+            transform: scale(2.5);
         }
 
         .btn-group {
@@ -253,6 +260,43 @@
             border-radius: 4px;
             background-color: var(--hover-bg);
         }
+
+        /* 評分反饋特效 */
+        #feedback-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 15rem;
+            font-weight: 800;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 100;
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .feedback-A { color: #4CAF50; text-shadow: 0 0 30px rgba(76, 175, 80, 0.6); }
+        .feedback-B { color: #2196F3; text-shadow: 0 0 30px rgba(33, 150, 243, 0.6); }
+        .feedback-C { color: #FF9800; text-shadow: 0 0 30px rgba(255, 152, 0, 0.6); }
+        .feedback-F { color: #F44336; text-shadow: 0 0 30px rgba(244, 67, 54, 0.6); }
+
+        .show-feedback {
+            transform: translate(-50%, -50%) scale(1) !important;
+            opacity: 1 !important;
+        }
+
+        /* 失敗時的螢幕震動特效 */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px) rotate(-1deg); }
+            50% { transform: translateX(10px) rotate(1deg); }
+            75% { transform: translateX(-10px) rotate(-1deg); }
+            100% { transform: translateX(0); }
+        }
+        .shake-animation {
+            animation: shake 0.3s ease-in-out;
+            border-color: #F44336 !important;
+        }
     </style>
 </head>
 <body class="home-bg">
@@ -260,7 +304,7 @@
     <h1>圖片審核系統</h1>
 
     <div class="container" id="upload-section">
-        <p class="upload-desc">請選擇包含圖片的資料夾或多張圖片進行審核</p>
+        <p class="upload-desc">請選擇可愛的女裝照進行審核</p>
         <input type="file" id="image-input" multiple accept="image/*" webkitdirectory directory>
         <br><br>
         <button class="primary-btn" onclick="startReview()">開始審核</button>
@@ -276,7 +320,8 @@
                 <div class="live-stat-item">F: <span id="stat-F">0</span></div>
             </div>
         </div>
-        <div id="image-container">
+        <div id="image-container" style="position: relative;">
+            <div id="feedback-overlay"></div>
             <img id="current-image" src="" alt="待審核圖片">
         </div>
         <div class="btn-group">
@@ -341,7 +386,13 @@
             const reader = new FileReader();
             
             reader.onload = function(e) {
-                document.getElementById('current-image').src = e.target.result;
+                const imgEl = document.getElementById('current-image');
+                imgEl.src = e.target.result;
+                
+                // 重置放大狀態
+                isZoomed = false;
+                imgEl.classList.remove('zoomed');
+                imgEl.style.transformOrigin = 'center center';
             }
             
             reader.readAsDataURL(file);
@@ -349,6 +400,9 @@
         }
 
         function rateImage(grade) {
+            // 防止特效重疊，先播放動畫再換圖
+            showFeedbackEffect(grade);
+
             results.push({
                 name: images[currentIndex].name,
                 grade: grade
@@ -358,7 +412,30 @@
             updateLiveStatsUI();
             
             currentIndex++;
-            showImage();
+            
+            // 延遲 300ms 讓使用者可以看見特效
+            setTimeout(() => {
+                showImage();
+            }, 300);
+        }
+
+        function showFeedbackEffect(grade) {
+            const overlay = document.getElementById('feedback-overlay');
+            overlay.innerText = grade;
+            overlay.className = `feedback-${grade} show-feedback`;
+            
+            const imgContainer = document.getElementById('image-container');
+            if (grade === 'F') {
+                imgContainer.classList.add('shake-animation');
+            } else {
+                imgContainer.classList.remove('shake-animation');
+            }
+            
+            // 短暫延遲後移除特效
+            setTimeout(() => {
+                overlay.className = '';
+                imgContainer.classList.remove('shake-animation');
+            }, 300);
         }
 
         function undo() {
@@ -410,6 +487,43 @@
             `;
 
             document.getElementById('summary-results').innerHTML = statsHtml + detailsHtml;
+        }
+
+        // 圖片放大細節功能
+        let isZoomed = false;
+        const imgElement = document.getElementById('current-image');
+
+        imgElement.addEventListener('click', function(e) {
+            isZoomed = !isZoomed;
+            if (isZoomed) {
+                this.classList.add('zoomed');
+                panImage(e);
+            } else {
+                this.classList.remove('zoomed');
+                this.style.transformOrigin = 'center center';
+            }
+        });
+
+        imgElement.addEventListener('mousemove', function(e) {
+            if (isZoomed) {
+                panImage(e);
+            }
+        });
+
+        imgElement.addEventListener('mouseleave', function() {
+            if (isZoomed) {
+                isZoomed = false;
+                this.classList.remove('zoomed');
+                this.style.transformOrigin = 'center center';
+            }
+        });
+
+        function panImage(e) {
+            const rect = imgElement.getBoundingClientRect();
+            // 計算滑鼠在圖片上的相對位置 (百分比)
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            imgElement.style.transformOrigin = `${x}% ${y}%`;
         }
 
         document.addEventListener('keydown', function(event) {
