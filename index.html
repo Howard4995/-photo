@@ -4,6 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>圖片審核系統</title>
+    <!-- 動態生成圓形 Favicon -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                // 畫一個圓形遮罩
+                ctx.beginPath();
+                ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, Math.PI * 2);
+                ctx.clip();
+                // 填入圖片
+                ctx.drawImage(img, 0, 0);
+                
+                // 輸出成圖示
+                let link = document.querySelector("link[rel~='icon']");
+                if (!link) {
+                    link = document.createElement('link');
+                    link.rel = 'icon';
+                    document.head.appendChild(link);
+                }
+                link.href = canvas.toDataURL('image/png');
+            };
+            img.src = 'icon.jpg'; // 讀取剛剛下載到本地的圖
+        });
+    </script>
     <style>
         :root {
             --bg-color: #f8f8f8;
@@ -297,9 +325,134 @@
             animation: shake 0.3s ease-in-out;
             border-color: #F44336 !important;
         }
+
+        /* 🟢 互動小寵物樣式 */
+        #pet-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            transform: scale(0.6);
+            transform-origin: bottom right;
+            z-index: 1000;
+        }
+        .profile-interaction-box {
+            position: relative;
+            width: 300px;
+            height: 250px;
+            background: #ffffff;
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .profile-interaction-box:active {
+            transform: scale(0.96) translateY(5px);
+        }
+        .pet-svg {
+            width: 160px;
+            height: auto;
+            overflow: visible;
+        }
+        .pet-body { fill: #eeeeee; }
+        .eye {
+            fill: #333;
+            rx: 4px;
+            transform-box: fill-box;
+            transform-origin: center;
+            transition: height 0.15s cubic-bezier(0.4, 0, 0.2, 1), y 0.15s cubic-bezier(0.4, 0, 0.2, 1), rx 0.15s ease;
+        }
+        .is-clicked .eye {
+            height: 2px;
+            y: 62px;
+            rx: 1px;
+        }
+        .is-clicked .pet-group {
+            animation: bounce 0.3s ease;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .hint-text {
+            margin-top: 20px;
+            color: #888;
+            font-size: 16px;
+            font-weight: bold;
+            pointer-events: none;
+        }
     </style>
+    <!-- 🟢 新增：Firebase 初始化與 SDK 引入 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, increment, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        // 您剛剛貼上的設定參數
+        const firebaseConfig = {
+            apiKey: "AIzaSyCn06APrv4yaN-Hra9jiPhXpapGiruF1Kk",
+            authDomain: "photo-54522.firebaseapp.com",
+            projectId: "photo-54522",
+            storageBucket: "photo-54522.firebasestorage.app",
+            messagingSenderId: "823792976092",
+            appId: "1:823792976092:web:0be560f20b16dc557ab419",
+            measurementId: "G-9SC48NCG54"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // 🟢 背景匿名登入
+        signInAnonymously(auth).then(() => {
+            console.log("Firebase 匿名登入成功！");
+        }).catch((error) => {
+            console.error("Firebase 登入失敗:", error);
+        });
+
+        // 將重要工具綁到 window 供下方的傳統 script 系統使用
+        window.fbDb = db;
+        window.fbDoc = doc;
+        window.fbSetDoc = setDoc;
+        window.fbIncrement = increment;
+        window.fbGetDoc = getDoc;
+    </script>
 </head>
 <body class="home-bg">
+
+    <!-- 🟢 互動小寵物 (固定在右下角) -->
+    <div id="pet-widget">
+        <div class="profile-interaction-box" id="petContainer">
+            <svg viewBox="0 0 313 280" fill="none" class="pet-svg">
+                <g class="pet-group">
+                    <!-- 身體 (橢圓) -->
+                    <ellipse cx="156.5" cy="148.574" rx="156.5" ry="130.5" fill="#eeeeee"></ellipse>
+                    
+                    <!-- 左耳 (路徑) -->
+                    <path d="M124.418 31.2596C124.418 31.2596 92.1678 -1.56954 76.4519 1.63163C60.736 4.83279 67.8513 58.2844 67.8513 58.2844L124.418 31.2596Z" fill="#eeeeee"></path>
+                    
+                    <!-- 右耳 (路徑) -->
+                    <path d="M188.082 32.7613C188.082 32.7613 222.439 -2.65817 236.206 0.159634C249.972 2.97744 253.082 61 253.082 61L188.112 32.7916L188.082 32.7613Z" fill="#eeeeee"></path>
+                    
+                    <!-- 嘴巴 (路徑) -->
+                    <path d="M185.593 91.0669C183.927 90.7184 182.261 91.7637 181.857 93.4562C181.705 94.1033 180.14 99.7281 171.103 99.7281C162.066 99.7281 160.955 94.3522 160.804 93.7051C160.602 92.3611 159.541 91.4153 158.229 91.1664C158.178 91.1166 158.128 91.1166 158.077 91.1166C156.411 90.7682 154.745 91.8135 154.341 93.5059C154.19 94.153 152.625 99.7779 143.587 99.7779C134.55 99.7779 133.439 94.4019 133.338 93.7548C133.086 92.0624 131.47 90.9175 129.754 91.1664C128.037 91.4153 126.826 93.0082 127.129 94.7006C127.734 98.5832 131.975 106 143.638 106C150.555 106 154.897 103.362 157.471 100.425C159.945 103.362 164.237 105.95 171.103 105.95C182.665 105.95 187.209 98.5832 188.016 94.7006C188.37 93.058 187.259 91.4153 185.593 91.0669Z" fill="#333333"></path>
+                    
+                    <!-- 眼睛 (核心 rect) -->
+                    <rect x="102" y="59" width="27.28" height="8.73" rx="4.36" fill="#333333" class="eye left"></rect>
+                    <rect x="186.03" y="59" width="27.28" height="8.73" rx="4.36" fill="#333333" class="eye right"></rect>
+                    
+                    <!-- 星星/點綴 (路徑) -->
+                    <path d="M113.5 84C113.5 74.2059 104.794 65.5 95 65.5C104.794 65.5 113.5 56.7941 113.5 47C113.5 56.7941 122.206 65.5 132 65.5C122.206 65.5 113.5 74.2059 113.5 84Z" fill="#ffcc00"></path>
+                    <path d="M201.5 84C201.5 74.2059 192.794 65.5 183 65.5C192.794 65.5 201.5 56.7941 201.5 47C201.5 56.7941 210.206 65.5 220 65.5C210.206 65.5 201.5 74.2059 201.5 84Z" fill="#ffcc00"></path>
+                </g>
+            </svg>
+            <div class="hint-text">戳戳我</div>
+        </div>
+    </div>
 
     <h1>圖片審核系統</h1>
 
@@ -349,6 +502,14 @@
         let currentIndex = 0;
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
+
+        // 預載音效檔案
+        const sounds = {
+            A: new Audio('a.mp3'),
+            B: new Audio('b.mp3'),
+            C: new Audio('c.mp3'),
+            F: new Audio('f.mp3')
+        };
 
         function startReview() {
             const input = document.getElementById('image-input');
@@ -400,11 +561,24 @@
         }
 
         function rateImage(grade) {
+            // 防護機制：確保索引不超出範圍 (避免快速連按出錯)
+            if (currentIndex >= images.length) return;
+
             // 防止特效重疊，先播放動畫再換圖
             showFeedbackEffect(grade);
 
+            const currentFileName = images[currentIndex].name;
+            
+            // 🟢 Firebase 更新：將這次的打分 +1 送上伺服器
+            if (window.fbDb) {
+                const photoRef = window.fbDoc(window.fbDb, "photos", currentFileName);
+                window.fbSetDoc(photoRef, {
+                    [grade]: window.fbIncrement(1)
+                }, { merge: true }).catch(e => console.error("Firebase 更新失敗", e));
+            }
+
             results.push({
-                name: images[currentIndex].name,
+                name: currentFileName,
                 grade: grade
             });
             
@@ -420,6 +594,12 @@
         }
 
         function showFeedbackEffect(grade) {
+            // 播放對應音效
+            if (sounds[grade]) {
+                sounds[grade].currentTime = 0; // 重置音軌，允許快速連續播放
+                sounds[grade].play().catch(e => console.log('音效播放失敗:', e));
+            }
+
             const overlay = document.getElementById('feedback-overlay');
             overlay.innerText = grade;
             overlay.className = `feedback-${grade} show-feedback`;
@@ -442,6 +622,15 @@
             if (currentIndex > 0) {
                 const lastResult = results.pop();
                 counts[lastResult.grade]--;
+                
+                // 🟢 Firebase 扣除：如果使用者按復原，就在雲端把剛剛的選擇 -1
+                if (window.fbDb) {
+                    const photoRef = window.fbDoc(window.fbDb, "photos", lastResult.name);
+                    window.fbSetDoc(photoRef, {
+                        [lastResult.grade]: window.fbIncrement(-1)
+                    }, { merge: true }).catch(e => console.error("Firebase 扣除更新失敗", e));
+                }
+
                 updateLiveStatsUI();
                 
                 currentIndex--;
@@ -463,22 +652,62 @@
             document.getElementById('stat-F').innerText = counts.F;
         }
 
-        function showSummary() {
+        // 🟢 修改為非同步函數 async function
+        async function showSummary() {
             document.getElementById('review-section').style.display = 'none';
             document.getElementById('summary-section').style.display = 'block';
 
+            // 先載入提示，避免載入資料庫太久導致畫面空白
+            document.getElementById('summary-results').innerHTML = '<h3 style="margin-top: 30px; font-weight: 500; color: #666;">載入大眾評分數據中，請稍候...</h3>';
+
             let detailsHtml = '<h3 style="margin-top: 30px; font-weight: 500;">詳細清單：</h3>';
 
-            results.forEach((res, index) => {
-                detailsHtml += `<div class="summary-item"><span>${index + 1}. ${res.name}</span> <span class="grade-badge">${res.grade}</span></div>`;
-            });
+            // 🟢 Firebase：向資料庫請求所有剛剛看過相片的大家都在給什麼評分
+            for (let i = 0; i < results.length; i++) {
+                const res = results[i];
+                let globalStatsStr = "";
+                
+                if (window.fbDb) {
+                    try {
+                        const photoRef = window.fbDoc(window.fbDb, "photos", res.name);
+                        const docSnap = await window.fbGetDoc(photoRef);
+                        
+                        // 計算大家投票的百分比
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            const totalVotes = (data.A || 0) + (data.B || 0) + (data.C || 0) + (data.F || 0);
+                            
+                            if (totalVotes > 0) {
+                                let percentages = [];
+                                ['A', 'B', 'C', 'F'].forEach(g => {
+                                    if (data[g] > 0) {
+                                        const p = Math.round((data[g] / totalVotes) * 100);
+                                        percentages.push(`${g}: ${p}%`);
+                                    }
+                                });
+                                globalStatsStr = `<span style="margin-left: 15px; color: var(--text-secondary); font-size: 0.85rem;">[眾人評分狀況: ${percentages.join(', ')}]</span>`;
+                            } else {
+                                globalStatsStr = `<span style="margin-left: 15px; color: var(--text-secondary); font-size: 0.85rem;">[目前僅有您的評分]</span>`;
+                            }
+                        }
+                    } catch (e) {
+                         console.error("無法取得 Firebase 數據", e);
+                    }
+                }
+
+                // 組合列表
+                detailsHtml += `<div class="summary-item">
+                    <div><span>${i + 1}. ${res.name}</span> ${globalStatsStr}</div>
+                    <span class="grade-badge">${res.grade}</span>
+                </div>`;
+            }
 
             let statsHtml = `
                 <div class="stats-grid">
-                    <div class="stat-box"><div class="stat-label">A 級</div><div class="stat-value">${counts.A}</div></div>
-                    <div class="stat-box"><div class="stat-label">B 級</div><div class="stat-value">${counts.B}</div></div>
-                    <div class="stat-box"><div class="stat-label">C 級</div><div class="stat-value">${counts.C}</div></div>
-                    <div class="stat-box"><div class="stat-label">F 級</div><div class="stat-value">${counts.F}</div></div>
+                    <div class="stat-box"><div class="stat-label">您給的 A 級</div><div class="stat-value">${counts.A}</div></div>
+                    <div class="stat-box"><div class="stat-label">您給的 B 級</div><div class="stat-value">${counts.B}</div></div>
+                    <div class="stat-box"><div class="stat-label">您給的 C 級</div><div class="stat-value">${counts.C}</div></div>
+                    <div class="stat-box"><div class="stat-label">您給的 F 級</div><div class="stat-value">${counts.F}</div></div>
                 </div>
                 <p style="text-align: right; color: var(--text-secondary); font-size: 0.9rem;">總計: ${results.length} 張</p>
                 <div style="margin-top:20px; text-align: right;">
@@ -543,6 +772,27 @@
                     }
                 }
             }
+        });
+
+        // 🟢 互動小寵物邏輯 (左鍵點擊捏揉與瞇眼)
+        const petContainer = document.getElementById('petContainer');
+
+        petContainer.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // 確保是左鍵
+                petContainer.classList.add('is-clicked');
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            petContainer.classList.remove('is-clicked');
+        });
+
+        // 取消行動裝置上的預設拖曳並支援觸控
+        petContainer.addEventListener('touchstart', (e) => {
+            petContainer.classList.add('is-clicked');
+        });
+        petContainer.addEventListener('touchend', () => {
+            petContainer.classList.remove('is-clicked');
         });
     </script>
 </body>
