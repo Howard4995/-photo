@@ -1,0 +1,40 @@
+圖片審核系統 - 開發技術與實現方法 (Technical Implementation Guide)
+=========================================================
+
+一、 系統架構概念 (Architecture)
+本系統採用「純前端 SPA (Single Page Application)」架構，搭配 Firebase Serverless 無伺服器後端技術。
+核心理念為「本地端圖片處理 + 雲端狀態統計」，確保使用者在處理大量照片時（如：幾千張圖）不會消耗任何網路頻加上傳原圖，極大化保護個人隱私並提升效能，僅將「評分結果」送往雲端同步。
+
+二、 前端核心技術 (Frontend Technologies)
+1. 原生 JavaScript (Vanilla JS ES6+) & HTML5
+   - 【本地檔案讀取】：利用 `<input type="file" webkitdirectory directory>` 讓使用者直接選取整個本地資料夾。
+   - 【記憶體渲染】：使用 `FileReader API` 的 `readAsDataURL`，即時將本地圖片轉換為 Base64 並在 `<img src="...">` 渲染，完全省去伺服器來回傳輸。
+   - 【鍵盤事件綁定】：透過 `document.addEventListener('keydown')` 綁定數字鍵 (1,2,3,0) 與快捷鍵 (Backspace)，達到流暢的純鍵盤快速評分。
+
+2. 現代 UI/UX 與 CSS 動態設計 (Modern CSS & Soft-UI)
+   - 【無負擔極簡風】：導入 Soft-UI (擬物與扁平交界) 概念，利用極大的圓角 (`--btn-radius: 9999px`)、微投影 (`box-shadow`) 與淺灰底色構成畫面。
+   - 【回饋動畫】：評分觸發時，利用 CSS `@keyframes` 與 `transition` 做出巨大評分字母彈出 (`scale: 1`)，以及針對 F 級別的螢幕震動 (`shake`)。
+   - 【SVG 互動動畫】：將貓咪的向量圖形 (SVG) 直接嵌入 HTML，並只依賴 CSS Pseudo-classes (`:hover`, `:active`) 控制 `<rect>` 的長寬高與 Y 座標，實現滑鼠一碰貓咪就「瞇眼 + 跳躍」的無腳本（Zero-JS）互動體驗。
+
+3. Canvas API (動態網站圖示 Dynamic Favicon)
+   - 解決瀏覽器本地端抓不到 icon 的問題，透過隱藏的 `<canvas>` 將本地圖片繪製成 2D 畫布，利用 `ctx.arc()` 進行圓形裁切，再輸出給 `<link rel="icon">`，實現動態圓形 Favicon。
+
+三、 後端與數據存儲 (Backend & Data Storage)
+1. Firebase v10 (ES Modules)
+   - 捨棄傳統 npm 包，直接利用 CDN import Firebase 的原生模組，讓 index.html 可以單檔運行完所有事。
+
+2. Firebase Authentication (匿名登入)
+   - 藉由 `signInAnonymously()` 背景靜默註冊，讓任何打開此工具的使用者都能獲得授權進行雲端寫入，免去登入註冊流程帶來的摩擦。
+
+3. Cloud Firestore (即時資料庫)
+   - 【資料模型】：每個文檔 (Document) 的 ID 直接對應圖片的檔名 (例如：img_001.jpg)。
+   - 【並發安全寫入】：針對全網總票數計算，放棄覆寫寫入，一律使用 Firebase 的 `increment(1)` (票數+1) 與 `increment(-1)` (復原-1) 以及 `merge: true`。這絕對避免了多人同時對同一張圖片評分時出現的 Race Condition (競爭條件) 覆寫災難。
+
+四、 關鍵功能邏輯 (Key Business Logic)
+1. 狀態管理與復原 (State & Undo):
+   - 建立 `results` 陣列做為 Stack。每次評分 `push` 進陣列；按下復原則 `pop` 彈出最後一次結果，游標 `currentIndex` 退回一格，並同步對 Firebase 發送 `increment(-1)` 扣除剛才的打分。
+2. 音效系統 (Audio Engine):
+   - 利用 `new Audio()` 提早快取預載4種評分音效檔。每次觸發時，強制將 `currentTime` 設為 0，就算極快速連按評分也能正確重置音源發出聲音。
+3. 統計中心匯總 (Global Summary):
+   - 當所有圖片陣列遍歷完成後，透過 `async/await` 批量查詢每一張看過的圖片檔名在 Firestore 內累積的全網總票數。
+   - 將「A, B, C, F」票數加總，算出百分比 (Math.round 運算)，讓使用者打分完立刻知道自己的喜好跟大眾的落差。

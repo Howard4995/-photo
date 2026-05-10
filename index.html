@@ -7,6 +7,19 @@
     <!-- 動態生成圓形 Favicon -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const updateDeviceMode = () => {
+                const isTouchDevice = navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
+                const isNarrowScreen = window.matchMedia('(max-width: 768px)').matches;
+                const isMobileDevice = isTouchDevice && isNarrowScreen;
+
+                document.body.classList.toggle('mobile-mode', isMobileDevice);
+                document.body.classList.toggle('desktop-mode', !isMobileDevice);
+                document.body.dataset.deviceMode = isMobileDevice ? 'mobile' : 'desktop';
+            };
+
+            updateDeviceMode();
+            window.addEventListener('resize', updateDeviceMode);
+
             const img = new Image();
             img.onload = function() {
                 const canvas = document.createElement('canvas');
@@ -34,21 +47,23 @@
     </script>
     <style>
         :root {
-            --bg-color: #f8f8f8;
+            --bg-color: #f7f9fa;
             --surface-color: #ffffff;
-            --text-primary: #1a1a1a;
-            --text-secondary: #6b6b6b;
-            --border-color: #e5e5e5;
-            --accent-color: #D97757; /* Claude-like serif accent */
-            --hover-bg: #f3f3f3;
+            --text-primary: #1f2328;
+            --text-secondary: #536471;
+            --border-color: #eff3f4;
+            --accent-color: #1d9bf0;
+            --hover-bg: #f7f9fa;
+            --btn-radius: 9999px;
+            --card-radius: 24px;
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             margin: 0;
-            padding: 40px 20px;
+            padding: 15px 20px; /* 從 40px 銳減到 15px，極致節省垂直空間 */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -57,25 +72,24 @@
         }
 
         body.home-bg {
-            /* 預設讀取目錄下的 background.jpg 作為首頁背景 */
-            background: url('background.jpg') center/cover no-repeat;
+            background-color: var(--bg-color); /* 去除原本的圖片背景，改用清爽簡約背景 */
         }
 
         h1 {
-            font-weight: 500;
-            font-size: 1.5rem;
+            font-weight: 800;
+            font-size: 2rem;
             margin-bottom: 30px;
             color: var(--text-primary);
+            letter-spacing: -0.5px;
         }
 
         .container {
-            background-color: rgba(255, 255, 255, 0.9); /* 加入半透明背景讓文字可讀 */
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 40px;
+            background-color: var(--surface-color);
+            border-radius: var(--card-radius);
+            padding: 20px 40px; /* 大幅極致縮減內部留白 */
             width: 100%;
             max-width: 800px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.04);
             text-align: center;
         }
 
@@ -86,27 +100,39 @@
 
         .upload-desc {
             color: var(--text-secondary);
-            margin-bottom: 20px;
+            margin-bottom: 15px; /* 取消 30px 改為 15px */
+            font-size: 1rem;     /* 縮減字體 */
+            font-weight: 500;
         }
 
         input[type="file"] {
-            margin-bottom: 20px;
+            margin-bottom: 30px;
             color: var(--text-secondary);
+            background: var(--hover-bg);
+            padding: 10px 20px;
+            border-radius: var(--btn-radius);
+            border: 2px dashed var(--border-color);
+            cursor: pointer;
+            outline: none;
         }
 
         button.primary-btn {
             background-color: var(--text-primary);
             color: white;
             border: none;
-            border-radius: 6px;
-            padding: 10px 24px;
-            font-size: 1rem;
+            border-radius: var(--btn-radius);
+            padding: 14px 40px;
+            font-size: 1.1rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         button.primary-btn:hover {
-            opacity: 0.85;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            background-color: #333;
         }
 
         /* Review Section */
@@ -120,54 +146,52 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            background: var(--surface-color);
+            padding: 15px 24px;
+            border-radius: var(--btn-radius);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03);
         }
 
         #progress {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-primary);
         }
 
         /* 實時統計區塊 */
         #live-stats {
             display: flex;
-            gap: 15px;
-            font-size: 0.85rem;
-            background: var(--surface-color);
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-
-        .live-stat-item {
-            font-weight: 500;
+            gap: 20px;
+            font-size: 0.95rem;
+            font-weight: 700;
         }
 
         .live-stat-item span {
             color: var(--text-secondary);
-            font-weight: normal;
+            font-weight: 600;
         }
 
         #image-container {
             width: 100%;
-            height: 60vh;
+            height: 65vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: var(--bg-color);
-            border-radius: 8px;
+            background-color: var(--surface-color);
+            border-radius: var(--card-radius);
             margin-bottom: 24px;
             overflow: hidden;
-            border: 1px solid var(--border-color);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.04);
         }
 
         #current-image {
-            max-width: 100%;
-            max-height: 100%;
+            max-width: 95%;
+            max-height: 95%;
+            border-radius: 12px;
             object-fit: contain;
             cursor: zoom-in;
-            transition: transform 0.15s ease-out;
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         #current-image.zoomed {
@@ -179,45 +203,54 @@
             display: flex;
             justify-content: center;
             gap: 16px;
-            margin-top: 20px;
+            margin-top: 24px;
         }
 
         .rate-btn {
             background-color: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 12px 32px;
-            font-size: 1.1rem;
-            font-weight: 500;
+            border: 2px solid var(--border-color);
+            border-radius: var(--card-radius);
+            padding: 16px 36px;
+            font-size: 1.5rem;
+            font-weight: 800;
             color: var(--text-primary);
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
             position: relative;
         }
 
         .rate-btn.undo-btn {
             background-color: transparent;
             color: var(--text-secondary);
-            border-style: dashed;
+            border: 2px dashed var(--border-color);
+            font-size: 1.1rem;
+            padding: 16px 24px;
         }
 
-        .rate-btn:hover {
-            background-color: var(--hover-bg);
-            border-color: #ccc;
+        .rate-btn:hover:not(:disabled) {
+            transform: translateY(-4px) scale(1.02);
+            border-color: #d1d9dd;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        }
+
+        .rate-btn:active:not(:disabled) {
+            transform: scale(0.95);
         }
 
         .rate-btn span {
             display: block;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             color: var(--text-secondary);
-            margin-top: 4px;
-            font-weight: normal;
+            margin-top: 6px;
+            font-weight: 600;
         }
 
         .keyboard-hint {
             margin-top: 24px;
             color: var(--text-secondary);
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            font-weight: 500;
         }
 
         /* Summary Section */
@@ -230,52 +263,60 @@
 
         .summary-card {
             background-color: var(--surface-color);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+            border-radius: var(--card-radius);
+            padding: 40px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.04);
             margin-bottom: 20px;
         }
 
         .summary-card h2 {
             margin-top: 0;
-            font-weight: 500;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 12px;
-            margin-bottom: 20px;
+            font-weight: 800;
+            padding-bottom: 16px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
-            margin-bottom: 30px;
+            gap: 20px;
+            margin-bottom: 40px;
         }
 
         .stat-box {
             background-color: var(--bg-color);
-            padding: 16px;
-            border-radius: 8px;
+            padding: 24px 16px;
+            border-radius: var(--card-radius);
             text-align: center;
+            transition: transform 0.2s ease;
+        }
+        
+        .stat-box:hover {
+            transform: translateY(-5px);
         }
 
         .stat-label {
-            font-size: 0.9rem;
+            font-size: 1rem;
+            font-weight: 700;
             color: var(--text-secondary);
         }
 
         .stat-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-top: 8px;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-top: 10px;
+            color: var(--text-primary);
         }
 
         .summary-item {
             display: flex;
             justify-content: space-between;
-            padding: 12px;
+            align-items: center;
+            padding: 16px;
             border-bottom: 1px solid var(--border-color);
-            font-size: 0.95rem;
+            font-size: 1rem;
+            font-weight: 500;
         }
 
         .summary-item:last-child {
@@ -283,10 +324,133 @@
         }
 
         .grade-badge {
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 4px;
-            background-color: var(--hover-bg);
+            font-weight: 800;
+            padding: 4px 12px;
+            border-radius: var(--btn-radius);
+            background-color: var(--text-primary);
+            color: white;
+        }
+
+        /* 🟢 個人簡介區塊 (極致壓縮版) */
+        .profile-section {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 900px;
+            margin: 0 auto 10px auto; /* 消滅外距 */
+            background: transparent;
+            padding: 0 20px;
+        }
+        .profile-left {
+            flex: 1 1 300px;
+            text-align: center;
+        }
+        .profile-avatar-wrap {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+        .profile-avatar {
+            width: 90px;  /* 等比再縮 */
+            height: 90px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid #fff;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            display: block;
+        }
+        .profile-avatar-cat {
+            position: absolute;
+            width: 58px;
+            height: 44px;
+            top: -22px;
+            right: -12px;
+            z-index: 2;
+            filter: drop-shadow(0 3px 3px rgba(0,0,0,0.28));
+            pointer-events: none;
+            transform: rotate(8deg);
+            transform-origin: 50% 80%;
+        }
+        .profile-avatar-wrap:hover .profile-avatar-cat {
+            animation: avatar-cat-peek 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes avatar-cat-peek {
+            0%, 100% { transform: translateY(0) rotate(8deg); }
+            45% { transform: translateY(-6px) rotate(3deg); }
+        }
+        .profile-name {
+            font-size: 1.3rem; /* 標題縮小 */
+            font-weight: 800;
+            color: var(--text-primary);
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+        .profile-handle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-top: 2px;
+            margin-bottom: 10px;
+        }
+        .profile-intro {
+            font-size: 0.85rem;
+            color: #555;
+            line-height: 1.4; /* 行高壓到最緊 */
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .social-link {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+            color: #333;
+            text-decoration: none;
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .social-link:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .social-link svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+        .profile-right {
+            flex: 1 1 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .info-row {
+            display: flex;
+            padding: 8px 0; /* 再度減半 */
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.85rem; /* 字體再縮微 */
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            width: 140px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+        .info-value {
+            flex: 1;
+            color: #666;
+            line-height: 1.8;
         }
 
         /* 評分反饋特效 */
@@ -326,64 +490,248 @@
             border-color: #F44336 !important;
         }
 
-        /* 🟢 互動小寵物樣式 */
-        #pet-widget {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            transform: scale(0.6);
-            transform-origin: bottom right;
-            z-index: 1000;
-        }
-        .profile-interaction-box {
+        /* 🟢 融合式貓咪按鈕元件 */
+        .cat-btn-group {
             position: relative;
-            width: 300px;
-            height: 250px;
-            background: #ffffff;
-            border-radius: 24px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+            display: inline-block;
+            margin-top: 15px; /* 維持，不能再少否則貓頭被遮擋 */
             cursor: pointer;
-            user-select: none;
-            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
-        .profile-interaction-box:active {
-            transform: scale(0.96) translateY(5px);
+        .cat-btn-group .primary-btn {
+            position: relative;
+            z-index: 2;
+            pointer-events: none; /* 讓點擊與懸停事件穿透到父層 */
         }
-        .pet-svg {
-            width: 160px;
-            height: auto;
-            overflow: visible;
+        .cat-svg-peeking {
+            position: absolute;
+            top: -45px; /* 高度下壓縮 */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px; /* 寬度也緊縮 */
+            z-index: 1;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
         }
-        .pet-body { fill: #eeeeee; }
+        .cat-btn-group:hover .cat-svg-peeking {
+            transform: translate(-50%, -15px);
+        }
+        .cat-btn-group:active .cat-svg-peeking {
+            transform: translate(-50%, -5px) scale(0.96);
+        }
+        .pet-body, .pet-ear { fill: #8a8a8a; } /* 配合圖片的深灰色胖貓 */
+        .pet-mouth { fill: none; stroke: #ffffff; stroke-width: 8; stroke-linecap: round; stroke-linejoin: round; }
         .eye {
-            fill: #333;
-            rx: 4px;
+            fill: #ffffff;
+            rx: 7px;
             transform-box: fill-box;
             transform-origin: center;
             transition: height 0.15s cubic-bezier(0.4, 0, 0.2, 1), y 0.15s cubic-bezier(0.4, 0, 0.2, 1), rx 0.15s ease;
         }
-        .is-clicked .eye {
-            height: 2px;
-            y: 62px;
-            rx: 1px;
-        }
-        .is-clicked .pet-group {
-            animation: bounce 0.3s ease;
+        /* 懸停或點擊外層群組時，眼睛自動瞇眼 */
+        .cat-btn-group:hover .eye, .cat-btn-group:active .eye {
+            height: 4px;
+            y: 100px;
+            rx: 2px;
         }
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
-        .hint-text {
-            margin-top: 20px;
-            color: #888;
-            font-size: 16px;
-            font-weight: bold;
-            pointer-events: none;
+
+        /* 行動裝置模式：由 JS 偵測後套用 body.mobile-mode */
+        body.mobile-mode {
+            padding: 12px;
+            align-items: stretch;
+            min-height: 100dvh;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .mobile-mode .profile-section,
+        .mobile-mode .container,
+        .mobile-mode #review-section,
+        .mobile-mode #summary-section {
+            width: 100%;
+            max-width: none;
+            box-sizing: border-box;
+        }
+
+        .mobile-mode .profile-section {
+            display: block;
+            padding: 0;
+            margin-bottom: 12px;
+        }
+
+        .mobile-mode .profile-left {
+            width: 100%;
+        }
+
+        .mobile-mode .profile-avatar {
+            width: 112px;
+            height: 112px;
+        }
+
+        .mobile-mode .profile-avatar-cat {
+            width: 66px;
+            height: 50px;
+            top: -24px;
+            right: -10px;
+        }
+
+        .mobile-mode .profile-name {
+            font-size: 1.65rem;
+        }
+
+        .mobile-mode .profile-intro {
+            max-width: 34rem;
+            margin: 14px auto;
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+
+        .mobile-mode .social-links {
+            margin-bottom: 18px;
+        }
+
+        .mobile-mode .social-link {
+            width: 56px;
+            height: 56px;
+        }
+
+        .mobile-mode .profile-right {
+            width: 100%;
+        }
+
+        .mobile-mode .info-row {
+            display: block;
+            padding: 14px 0;
+            font-size: 0.95rem;
+        }
+
+        .mobile-mode .info-label {
+            width: auto;
+            margin-bottom: 4px;
+        }
+
+        .mobile-mode .container {
+            padding: 42px 18px 22px;
+            border-radius: 18px;
+        }
+
+        .mobile-mode button.primary-btn {
+            width: 100%;
+            min-height: 56px;
+            padding: 16px 24px;
+            font-size: 1.05rem;
+        }
+
+        .mobile-mode #review-section {
+            padding-bottom: calc(166px + env(safe-area-inset-bottom));
+        }
+
+        .mobile-mode .review-header {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 12px 14px;
+            border-radius: 18px;
+        }
+
+        .mobile-mode #progress {
+            font-size: 0.9rem;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .mobile-mode #live-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .mobile-mode .live-stat-item {
+            background: var(--hover-bg);
+            border-radius: 12px;
+            padding: 8px 4px;
+            text-align: center;
+        }
+
+        .mobile-mode #image-container {
+            height: min(58dvh, calc(100dvh - 250px));
+            min-height: 310px;
+            margin-bottom: 10px;
+            border-radius: 18px;
+        }
+
+        .mobile-mode #current-image {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 10px;
+        }
+
+        .mobile-mode #current-image.zoomed {
+            transform: scale(2);
+        }
+
+        .mobile-mode .btn-group {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 200;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            margin: 0;
+            padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+            background: rgba(247, 249, 250, 0.96);
+            border-top: 1px solid var(--border-color);
+            backdrop-filter: blur(14px);
+        }
+
+        .mobile-mode .rate-btn {
+            min-width: 0;
+            min-height: 64px;
+            padding: 12px 6px;
+            border-radius: 18px;
+            font-size: 1.4rem;
+        }
+
+        .mobile-mode .rate-btn span {
+            display: none;
+        }
+
+        .mobile-mode .rate-btn.undo-btn {
+            grid-column: 1 / -1;
+            min-height: 48px;
+            order: 2;
+            font-size: 1rem;
+        }
+
+        .mobile-mode .keyboard-hint {
+            display: none;
+        }
+
+        .mobile-mode #feedback-overlay {
+            font-size: 8rem;
+        }
+
+        .mobile-mode .summary-card {
+            padding: 22px 16px;
+            border-radius: 18px;
+        }
+
+        .mobile-mode .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .mobile-mode .summary-item {
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.9rem;
+            word-break: break-word;
         }
     </style>
     <!-- 🟢 新增：Firebase 初始化與 SDK 引入 -->
@@ -424,43 +772,80 @@
 </head>
 <body class="home-bg">
 
-    <!-- 🟢 互動小寵物 (固定在右下角) -->
-    <div id="pet-widget">
-        <div class="profile-interaction-box" id="petContainer">
-            <svg viewBox="0 0 313 280" fill="none" class="pet-svg">
-                <g class="pet-group">
-                    <!-- 身體 (橢圓) -->
-                    <ellipse cx="156.5" cy="148.574" rx="156.5" ry="130.5" fill="#eeeeee"></ellipse>
-                    
-                    <!-- 左耳 (路徑) -->
-                    <path d="M124.418 31.2596C124.418 31.2596 92.1678 -1.56954 76.4519 1.63163C60.736 4.83279 67.8513 58.2844 67.8513 58.2844L124.418 31.2596Z" fill="#eeeeee"></path>
-                    
-                    <!-- 右耳 (路徑) -->
-                    <path d="M188.082 32.7613C188.082 32.7613 222.439 -2.65817 236.206 0.159634C249.972 2.97744 253.082 61 253.082 61L188.112 32.7916L188.082 32.7613Z" fill="#eeeeee"></path>
-                    
-                    <!-- 嘴巴 (路徑) -->
-                    <path d="M185.593 91.0669C183.927 90.7184 182.261 91.7637 181.857 93.4562C181.705 94.1033 180.14 99.7281 171.103 99.7281C162.066 99.7281 160.955 94.3522 160.804 93.7051C160.602 92.3611 159.541 91.4153 158.229 91.1664C158.178 91.1166 158.128 91.1166 158.077 91.1166C156.411 90.7682 154.745 91.8135 154.341 93.5059C154.19 94.153 152.625 99.7779 143.587 99.7779C134.55 99.7779 133.439 94.4019 133.338 93.7548C133.086 92.0624 131.47 90.9175 129.754 91.1664C128.037 91.4153 126.826 93.0082 127.129 94.7006C127.734 98.5832 131.975 106 143.638 106C150.555 106 154.897 103.362 157.471 100.425C159.945 103.362 164.237 105.95 171.103 105.95C182.665 105.95 187.209 98.5832 188.016 94.7006C188.37 93.058 187.259 91.4153 185.593 91.0669Z" fill="#333333"></path>
-                    
-                    <!-- 眼睛 (核心 rect) -->
-                    <rect x="102" y="59" width="27.28" height="8.73" rx="4.36" fill="#333333" class="eye left"></rect>
-                    <rect x="186.03" y="59" width="27.28" height="8.73" rx="4.36" fill="#333333" class="eye right"></rect>
-                    
-                    <!-- 星星/點綴 (路徑) -->
-                    <path d="M113.5 84C113.5 74.2059 104.794 65.5 95 65.5C104.794 65.5 113.5 56.7941 113.5 47C113.5 56.7941 122.206 65.5 132 65.5C122.206 65.5 113.5 74.2059 113.5 84Z" fill="#ffcc00"></path>
-                    <path d="M201.5 84C201.5 74.2059 192.794 65.5 183 65.5C192.794 65.5 201.5 56.7941 201.5 47C201.5 56.7941 210.206 65.5 220 65.5C210.206 65.5 201.5 74.2059 201.5 84Z" fill="#ffcc00"></path>
-                </g>
-            </svg>
-            <div class="hint-text">戳戳我</div>
+    <!-- 🟢 1:1 個人簡介區塊 (首頁專屬) -->
+    <div class="profile-section" id="profile-section">
+        <div class="profile-left">
+            <div class="profile-avatar-wrap" aria-label="Howard profile avatar">
+                <img src="icon.jpg" alt="Howard" class="profile-avatar">
+                <svg class="profile-avatar-cat" viewBox="0 0 120 92" aria-hidden="true">
+                    <path d="M18 56c-5-17 5-33 26-38 4-8 13-15 18-14 3 1 0 10 0 16 9 1 18 4 24 10 7 7 12 17 14 29 12-4 18 0 16 8-2 10-15 18-31 17H47C32 84 22 74 18 56Z" fill="#fff"/>
+                    <path d="M18 56c-5-17 5-33 26-38 4-8 13-15 18-14 3 1 0 10 0 16 9 1 18 4 24 10 7 7 12 17 14 29 12-4 18 0 16 8-2 10-15 18-31 17H47C32 84 22 74 18 56Z" fill="none" stroke="#111" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M45 22c-3-9-2-17 2-19 3-1 9 7 12 18" fill="#fff" stroke="#111" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M38 65c-9 3-18 0-22-8" fill="none" stroke="#111" stroke-width="7" stroke-linecap="round"/>
+                    <path d="M85 66c8 5 17 4 24-3" fill="none" stroke="#111" stroke-width="7" stroke-linecap="round"/>
+                    <circle cx="55" cy="47" r="5" fill="#111"/>
+                    <circle cx="78" cy="50" r="5" fill="#111"/>
+                </svg>
+            </div>
+            <h2 class="profile-name">Howard</h2>
+            <div class="profile-handle">@Howard4995</div>
+            <div class="profile-intro">
+                我是Howard(≧∀≦)ゞ<br><br>
+                我靠好奇心和奶茶續命，另外其實 cola 也很喜歡，可是奶茶還是第一名啦。<br>
+                腦袋常在想：「AI 到底什麼時候會真正像人？」<br><br>
+                我喜歡共產、地獄梗、還有未來感世界觀。<br>
+                最近正在把 AI 當成能一起成長的存在。<br><br>
+                有時研究模型。<br>有時研究人類。<br>有時半夜看顯卡跑分看到破防。<br><br>
+                如果頻率對上了，<br>那就一起聊點瘋狂的未來(⸝⸝•̀֊•́⸝⸝)!
+            </div>
+            <div class="social-links">
+                <!-- X (Twitter) -->
+                <a href="https://x.com/Howard54278714" target="_blank" class="social-link" title="X (Twitter)">
+                    <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+                <!-- GitHub -->
+                <a href="https://github.com/Howard4995" target="_blank" class="social-link" title="GitHub">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.646 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.376.202 2.394.1 2.646.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z"/></svg>
+                </a>
+            </div>
+        </div>
+        <div class="profile-right">
+            <div class="info-row">
+                <div class="info-label">使用語言 & 技術</div>
+                <div class="info-value">C++, HTML5, CSS3, JavaScript, Python, Swift</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">基礎設施 & 工具</div>
+                <div class="info-value">AWS, Azure, Docker, Git, Linux, Arduino</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">主要屬性</div>
+                <div class="info-value">前端開發者 (Frontend Developer), 學生, AI 研究愛好者</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">喜歡的事物</div>
+                <div class="info-value">奶茶, Cola, AI, 共產, 地獄梗, 未來感世界觀, 半夜看顯卡跑分</div>
+            </div>
         </div>
     </div>
 
-    <h1>圖片審核系統</h1>
-
     <div class="container" id="upload-section">
-        <p class="upload-desc">請選擇可愛的女裝照進行審核</p>
-        <input type="file" id="image-input" multiple accept="image/*" webkitdirectory directory>
-        <br><br>
-        <button class="primary-btn" onclick="startReview()">開始審核</button>
+        <p class="upload-desc">點擊下方按鈕，直接開始載入 Dress 資料夾審核</p>
+        
+        <!-- 🟢 貓咪融合大按鈕 -->
+        <div class="cat-btn-group" onclick="startReview()">
+            <svg viewBox="0 0 313 280" fill="none" class="cat-svg-peeking">
+                <g class="pet-group">
+                    <ellipse cx="156.5" cy="170" rx="140" ry="110" class="pet-body"></ellipse>
+                    <path d="M 60 100 L 80 20 L 130 70 Z" class="pet-ear"></path>
+                    <path d="M 253 100 L 233 20 L 183 70 Z" class="pet-ear"></path>
+                    <path d="M 130 130 Q 143 148 156.5 130 Q 170 148 183 130" class="pet-mouth"></path>
+                    <rect x="110" y="95" width="14" height="14" rx="7" class="eye left"></rect>
+                    <rect x="189" y="95" width="14" height="14" rx="7" class="eye right"></rect>
+                </g>
+            </svg>
+            <button class="primary-btn">開始審核</button>
+        </div>
     </div>
 
     <div id="review-section">
@@ -492,7 +877,20 @@
             <h2>審核總結</h2>
             <div id="summary-results"></div>
             <div style="text-align: center; margin-top: 30px;">
-                <button class="primary-btn" onclick="location.reload()">重新開始</button>
+                <!-- 🟢 貓咪融合重新開始按鈕 -->
+                <div class="cat-btn-group" onclick="location.reload()">
+                    <svg viewBox="0 0 313 280" fill="none" class="cat-svg-peeking">
+                        <g class="pet-group">
+                            <ellipse cx="156.5" cy="170" rx="140" ry="110" class="pet-body"></ellipse>
+                            <path d="M 60 100 L 80 20 L 130 70 Z" class="pet-ear"></path>
+                            <path d="M 253 100 L 233 20 L 183 70 Z" class="pet-ear"></path>
+                            <path d="M 130 130 Q 143 148 156.5 130 Q 170 148 183 130" class="pet-mouth"></path>
+                            <rect x="110" y="95" width="14" height="14" rx="7" class="eye left"></rect>
+                            <rect x="189" y="95" width="14" height="14" rx="7" class="eye right"></rect>
+                        </g>
+                    </svg>
+                    <button class="primary-btn">重新開始</button>
+                </div>
             </div>
         </div>
     </div>
@@ -511,28 +909,35 @@
             F: new Audio('f.mp3')
         };
 
-        function startReview() {
-            const input = document.getElementById('image-input');
-            const files = Array.from(input.files).filter(file => file.type.startsWith('image/'));
+        async function startReview() {
+            try {
+                // 從剛剛產生的 images.json 抓取圖片清單
+                const response = await fetch('images.json');
+                const files = await response.json();
 
-            if (files.length === 0) {
-                alert('請先選擇圖片！');
-                return;
+                if (!files || files.length === 0) {
+                    alert('未找到圖片清單或 Dress 資料夾為空！');
+                    return;
+                }
+
+                images = files;
+                currentIndex = 0;
+                results = [];
+                counts = { A: 0, B: 0, C: 0, F: 0 };
+                updateLiveStatsUI();
+
+                // 移除首頁背景 class，使審核畫面乾淨
+                document.body.classList.remove('home-bg');
+
+                document.getElementById('profile-section').style.display = 'none';
+                document.getElementById('upload-section').style.display = 'none';
+                document.getElementById('review-section').style.display = 'block';
+                
+                showImage();
+            } catch (err) {
+                alert('載入圖片清單失敗 (請確認有執行產生 images.json 腳本並允許本地讀取)：' + err);
+                console.error(err);
             }
-
-            images = files;
-            currentIndex = 0;
-            results = [];
-            counts = { A: 0, B: 0, C: 0, F: 0 };
-            updateLiveStatsUI();
-
-            // 移除首頁背景 class，使審核畫面乾淨
-            document.body.classList.remove('home-bg');
-
-            document.getElementById('upload-section').style.display = 'none';
-            document.getElementById('review-section').style.display = 'block';
-            
-            showImage();
         }
 
         function showImage() {
@@ -543,21 +948,19 @@
                 return;
             }
 
-            const file = images[currentIndex];
-            const reader = new FileReader();
+            const fileUrl = images[currentIndex];
+            const fileName = fileUrl.split('/').pop();
             
-            reader.onload = function(e) {
-                const imgEl = document.getElementById('current-image');
-                imgEl.src = e.target.result;
+            const imgEl = document.getElementById('current-image');
+            // 處理路徑中的井號(#)與空白，避免在 GitHub Pages 被當作 URL 錨點截斷
+            imgEl.src = fileUrl.split('/').map(encodeURIComponent).join('/');
                 
-                // 重置放大狀態
-                isZoomed = false;
-                imgEl.classList.remove('zoomed');
-                imgEl.style.transformOrigin = 'center center';
-            }
+            // 重置放大狀態
+            isZoomed = false;
+            imgEl.classList.remove('zoomed');
+            imgEl.style.transformOrigin = 'center center';
             
-            reader.readAsDataURL(file);
-            document.getElementById('progress').innerText = `進度: ${currentIndex + 1} / ${images.length} - 檔案: ${file.name}`;
+            document.getElementById('progress').innerText = `進度: ${currentIndex + 1} / ${images.length} - 檔案: ${fileName}`;
         }
 
         function rateImage(grade) {
@@ -567,7 +970,8 @@
             // 防止特效重疊，先播放動畫再換圖
             showFeedbackEffect(grade);
 
-            const currentFileName = images[currentIndex].name;
+            const fileUrl = images[currentIndex];
+            const currentFileName = fileUrl.split('/').pop();
             
             // 🟢 Firebase 更新：將這次的打分 +1 送上伺服器
             if (window.fbDb) {
@@ -772,27 +1176,6 @@
                     }
                 }
             }
-        });
-
-        // 🟢 互動小寵物邏輯 (左鍵點擊捏揉與瞇眼)
-        const petContainer = document.getElementById('petContainer');
-
-        petContainer.addEventListener('mousedown', (e) => {
-            if (e.button === 0) { // 確保是左鍵
-                petContainer.classList.add('is-clicked');
-            }
-        });
-
-        window.addEventListener('mouseup', () => {
-            petContainer.classList.remove('is-clicked');
-        });
-
-        // 取消行動裝置上的預設拖曳並支援觸控
-        petContainer.addEventListener('touchstart', (e) => {
-            petContainer.classList.add('is-clicked');
-        });
-        petContainer.addEventListener('touchend', () => {
-            petContainer.classList.remove('is-clicked');
         });
     </script>
 </body>
