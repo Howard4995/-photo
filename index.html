@@ -8,9 +8,8 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const updateDeviceMode = () => {
-                const isTouchDevice = navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches;
                 const isNarrowScreen = window.matchMedia('(max-width: 768px)').matches;
-                const isMobileDevice = isTouchDevice && isNarrowScreen;
+                const isMobileDevice = isNarrowScreen; // 移除強制觸控裝置判斷，只要螢幕夠窄就直接轉成手機排版
 
                 document.body.classList.toggle('mobile-mode', isMobileDevice);
                 document.body.classList.toggle('desktop-mode', !isMobileDevice);
