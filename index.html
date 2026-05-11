@@ -880,7 +880,7 @@
             <div id="summary-results"></div>
             <div style="text-align: center; margin-top: 30px;">
                 <!-- 🟢 貓咪融合重新開始按鈕 -->
-                <div class="cat-btn-group" onclick="location.reload()">
+                <div class="cat-btn-group" onclick="restartReview()">
                     <svg viewBox="0 0 313 280" fill="none" class="cat-svg-peeking">
                         <g class="pet-group">
                             <ellipse cx="156.5" cy="170" rx="140" ry="110" class="pet-body"></ellipse>
@@ -902,6 +902,95 @@
         let currentIndex = 0;
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
+        const PROGRESS_COOKIE_NAME = 'photo-review-progress';
+        const PROGRESS_COOKIE_DAYS = 30;
+
+        function setCookie(name, value, days) {
+            const expires = new Date(Date.now() + days * 864e5).toUTCString();
+            document.cookie = `${name}=${value}; expires=${expires}; path=/`;
+        }
+
+        function getCookie(name) {
+            const prefix = `${name}=`;
+            const cookie = document.cookie.split('; ').find(row => row.startsWith(prefix));
+            return cookie ? cookie.slice(prefix.length) : '';
+        }
+
+        function clearProgressCookie() {
+            document.cookie = `${PROGRESS_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
+        }
+
+        function buildCountsFromGrades(gradeHistory) {
+            const nextCounts = { A: 0, B: 0, C: 0, F: 0 };
+            for (const grade of gradeHistory) {
+                if (nextCounts[grade] !== undefined) {
+                    nextCounts[grade]++;
+                }
+            }
+            return nextCounts;
+        }
+
+        function buildResultsFromGrades(gradeHistory, files) {
+            const list = [];
+            const limit = Math.min(gradeHistory.length, files.length);
+            for (let i = 0; i < limit; i++) {
+                const fileUrl = files[i];
+                const fileName = fileUrl.split('/').pop();
+                list.push({ name: fileName, grade: gradeHistory[i] });
+            }
+            return list;
+        }
+
+        function saveProgressCookie() {
+            if (!images.length || results.length === 0 || currentIndex === 0) {
+                clearProgressCookie();
+                return;
+            }
+
+            const gradeHistory = results.map(res => res.grade).join('');
+            const payload = {
+                v: 1,
+                currentIndex,
+                gradeHistory,
+                imagesLength: images.length
+            };
+
+            setCookie(PROGRESS_COOKIE_NAME, encodeURIComponent(JSON.stringify(payload)), PROGRESS_COOKIE_DAYS);
+        }
+
+        function loadProgressCookie(files) {
+            const raw = getCookie(PROGRESS_COOKIE_NAME);
+            if (!raw) return null;
+
+            try {
+                const parsed = JSON.parse(decodeURIComponent(raw));
+                if (!parsed || typeof parsed.gradeHistory !== 'string') return null;
+                if (parsed.imagesLength && parsed.imagesLength !== files.length) return null;
+
+                const sanitizedGrades = parsed.gradeHistory.replace(/[^ABCF]/g, '');
+                const maxLength = Math.min(sanitizedGrades.length, files.length);
+                const targetIndex = Math.min(
+                    typeof parsed.currentIndex === 'number' ? parsed.currentIndex : maxLength,
+                    maxLength,
+                    files.length
+                );
+                const gradeHistory = sanitizedGrades.slice(0, targetIndex);
+
+                return {
+                    currentIndex: targetIndex,
+                    results: buildResultsFromGrades(gradeHistory, files),
+                    counts: buildCountsFromGrades(gradeHistory)
+                };
+            } catch (err) {
+                console.error('讀取進度 Cookie 失敗', err);
+                return null;
+            }
+        }
+
+        function restartReview() {
+            clearProgressCookie();
+            location.reload();
+        }
 
         // 預載音效檔案
         const sounds = {
@@ -926,6 +1015,34 @@
                 currentIndex = 0;
                 results = [];
                 counts = { A: 0, B: 0, C: 0, F: 0 };
+
+                const savedProgress = loadProgressCookie(files);
+                if (savedProgress) {
+                    if (savedProgress.currentIndex >= files.length) {
+                        const shouldResume = confirm('偵測到上次審核已完成，是否要查看總結？');
+                        if (shouldResume) {
+                            currentIndex = savedProgress.currentIndex;
+                            results = savedProgress.results;
+                            counts = savedProgress.counts;
+                            saveProgressCookie();
+                        } else {
+                            clearProgressCookie();
+                        }
+                    } else if (savedProgress.currentIndex > 0) {
+                        const shouldResume = confirm('偵測到上次未完成的審核進度，是否要繼續？');
+                        if (shouldResume) {
+                            currentIndex = savedProgress.currentIndex;
+                            results = savedProgress.results;
+                            counts = savedProgress.counts;
+                            saveProgressCookie();
+                        } else {
+                            clearProgressCookie();
+                        }
+                    } else {
+                        clearProgressCookie();
+                    }
+                }
+
                 updateLiveStatsUI();
 
                 // 移除首頁背景 class，使審核畫面乾淨
@@ -935,7 +1052,11 @@
                 document.getElementById('upload-section').style.display = 'none';
                 document.getElementById('review-section').style.display = 'block';
                 
-                showImage();
+                if (currentIndex >= images.length) {
+                    showSummary();
+                } else {
+                    showImage();
+                }
             } catch (err) {
                 alert('載入圖片清單失敗 (請確認有執行產生 images.json 腳本並允許本地讀取)：' + err);
                 console.error(err);
@@ -996,6 +1117,7 @@
             updateLiveStatsUI();
             
             currentIndex++;
+            saveProgressCookie();
             
             // 延遲 300ms 讓使用者可以看見特效
             setTimeout(() => {
@@ -1052,6 +1174,7 @@
                 }
                 
                 showImage();
+                saveProgressCookie();
             }
         }
 
