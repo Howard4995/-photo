@@ -902,15 +902,19 @@
         let currentIndex = 0;
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
-        const MS_PER_DAY = 864e5;
+        const MILLISECONDS_PER_DAY = 864e5;
         const VALID_GRADES = 'ABCF';
         const PROGRESS_COOKIE_NAME = 'photo-review-progress';
         const PROGRESS_COOKIE_DAYS = 30;
         const INVALID_GRADE_PATTERN = new RegExp(`[^${VALID_GRADES}]`, 'g');
 
         function setCookie(name, value, days) {
-            const expires = new Date(Date.now() + days * MS_PER_DAY).toUTCString();
-            document.cookie = `${name}=${value}; expires=${expires}; path=/`;
+            const expires = new Date(Date.now() + days * MILLISECONDS_PER_DAY).toUTCString();
+            let cookieValue = `${name}=${value}; expires=${expires}; path=/; SameSite=Strict`;
+            if (location.protocol === 'https:') {
+                cookieValue += '; Secure';
+            }
+            document.cookie = cookieValue;
         }
 
         function getCookie(name) {
@@ -970,7 +974,9 @@
                 if (!parsed || typeof parsed.gradeHistory !== 'string') return null;
                 if (parsed.imagesLength && parsed.imagesLength !== files.length) return null;
 
-                const sanitizedGrades = parsed.gradeHistory.replace(INVALID_GRADE_PATTERN, '');
+                const maxHistoryLength = files.length;
+                const trimmedHistory = parsed.gradeHistory.slice(0, maxHistoryLength);
+                const sanitizedGrades = trimmedHistory.replace(INVALID_GRADE_PATTERN, '');
                 const maxLength = Math.min(sanitizedGrades.length, files.length);
                 const targetIndex = Math.min(
                     typeof parsed.currentIndex === 'number' ? parsed.currentIndex : maxLength,
