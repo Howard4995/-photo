@@ -26,6 +26,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: false
+          sparse-checkout: |
+            index.html
+            images.json
+            icon.jpg
+            background.jpg
+            a.mp3
+            b.mp3
+            c.mp3
+            f.mp3
+            README.md
+          sparse-checkout-cone-mode: false
 
       - name: Prepare static site
         run: |
