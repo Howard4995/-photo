@@ -902,7 +902,7 @@
         let currentIndex = 0;
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
-        const MILLISECONDS_PER_DAY = 86400000;
+        const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
         const VALID_GRADES = 'ABCF';
         const PROGRESS_COOKIE_NAME = 'photo-review-progress';
         const PROGRESS_COOKIE_DAYS = 30;
@@ -949,7 +949,7 @@
         }
 
         function saveProgressCookie() {
-            if (!images.length || results.length === 0) {
+            if (!images.length) {
                 clearProgressCookie();
                 return;
             }
@@ -976,10 +976,9 @@
                 const trimmedHistory = parsed.gradeHistory.slice(0, maxHistoryLength);
                 const sanitizedGrades = trimmedHistory.replace(INVALID_GRADE_PATTERN, '');
                 const maxLength = Math.min(sanitizedGrades.length, files.length);
-                const targetIndex = Math.min(
-                    typeof parsed.currentIndex === 'number' ? parsed.currentIndex : maxLength,
-                    maxLength
-                );
+                const rawIndex = typeof parsed.currentIndex === 'number' ? parsed.currentIndex : maxLength;
+                const normalizedIndex = rawIndex > 0 ? rawIndex : maxLength;
+                const targetIndex = Math.min(normalizedIndex, maxLength);
                 const gradeHistory = sanitizedGrades.slice(0, targetIndex);
 
                 return {
