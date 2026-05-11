@@ -971,7 +971,7 @@
             };
             const encodedPayload = encodeURIComponent(JSON.stringify(payload));
             if (encodedPayload.length > MAX_COOKIE_VALUE_LENGTH) {
-                console.warn('進度資料過大，無法寫入 Cookie。');
+                console.warn('進度資料過大，無法寫入 Cookie.');
                 return;
             }
 
@@ -990,12 +990,17 @@
                 const trimmedHistory = parsed.gradeHistory.slice(0, maxHistoryLength);
                 const sanitizedGrades = trimmedHistory.replace(INVALID_GRADE_PATTERN, '');
                 if (sanitizedGrades.length !== trimmedHistory.length) {
-                    console.warn('進度資料包含無效評分，已自動忽略。');
+                    console.warn('進度資料包含無效評分，已自動忽略.');
                 }
                 const maxLength = Math.min(sanitizedGrades.length, files.length);
                 const rawIndex = typeof parsed.currentIndex === 'number' ? parsed.currentIndex : maxLength;
                 // 若索引為 0 但有歷史評分，改用歷史長度避免遺失進度
-                const normalizedIndex = rawIndex > 0 ? rawIndex : (maxLength > 0 ? maxLength : 0);
+                let normalizedIndex = rawIndex;
+                if (normalizedIndex <= 0 && maxLength > 0) {
+                    normalizedIndex = maxLength;
+                } else if (normalizedIndex < 0) {
+                    normalizedIndex = 0;
+                }
                 const targetIndex = Math.min(normalizedIndex, maxLength);
                 const gradeHistory = sanitizedGrades.slice(0, targetIndex);
 
