@@ -902,11 +902,11 @@
         let currentIndex = 0;
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
-        const MILLISECONDS_PER_DAY = 864e5;
+        const MILLISECONDS_PER_DAY = 86400000;
         const VALID_GRADES = 'ABCF';
         const PROGRESS_COOKIE_NAME = 'photo-review-progress';
         const PROGRESS_COOKIE_DAYS = 30;
-        const INVALID_GRADE_PATTERN = new RegExp(`[^${VALID_GRADES}]`, 'g');
+        const INVALID_GRADE_PATTERN = /[^ABCF]/g;
 
         function setCookie(name, value, days) {
             const expires = new Date(Date.now() + days * MILLISECONDS_PER_DAY).toUTCString();
@@ -958,8 +958,7 @@
             const payload = {
                 v: 1,
                 currentIndex,
-                gradeHistory,
-                imagesLength: images.length
+                gradeHistory
             };
 
             setCookie(PROGRESS_COOKIE_NAME, encodeURIComponent(JSON.stringify(payload)), PROGRESS_COOKIE_DAYS);
@@ -972,7 +971,6 @@
             try {
                 const parsed = JSON.parse(decodeURIComponent(raw));
                 if (!parsed || typeof parsed.gradeHistory !== 'string') return null;
-                if (parsed.imagesLength && parsed.imagesLength !== files.length) return null;
 
                 const maxHistoryLength = files.length;
                 const trimmedHistory = parsed.gradeHistory.slice(0, maxHistoryLength);
@@ -980,8 +978,7 @@
                 const maxLength = Math.min(sanitizedGrades.length, files.length);
                 const targetIndex = Math.min(
                     typeof parsed.currentIndex === 'number' ? parsed.currentIndex : maxLength,
-                    maxLength,
-                    files.length
+                    maxLength
                 );
                 const gradeHistory = sanitizedGrades.slice(0, targetIndex);
 
@@ -1027,24 +1024,17 @@
 
                 const savedProgress = loadProgressCookie(files);
                 if (savedProgress) {
+                    let shouldUseSaved = false;
                     if (savedProgress.currentIndex >= files.length) {
-                        const shouldViewSummary = confirm('偵測到上次審核已完成，是否要查看總結？');
-                        if (shouldViewSummary) {
-                            currentIndex = savedProgress.currentIndex;
-                            results = savedProgress.results;
-                            counts = savedProgress.counts;
-                        } else {
-                            clearProgressCookie();
-                        }
+                        shouldUseSaved = confirm('偵測到上次審核已完成，是否要查看總結？');
                     } else if (savedProgress.currentIndex > 0) {
-                        const shouldResume = confirm('偵測到上次未完成的審核進度，是否要繼續？');
-                        if (shouldResume) {
-                            currentIndex = savedProgress.currentIndex;
-                            results = savedProgress.results;
-                            counts = savedProgress.counts;
-                        } else {
-                            clearProgressCookie();
-                        }
+                        shouldUseSaved = confirm('偵測到上次未完成的審核進度，是否要繼續？');
+                    }
+
+                    if (shouldUseSaved) {
+                        currentIndex = savedProgress.currentIndex;
+                        results = savedProgress.results;
+                        counts = savedProgress.counts;
                     } else {
                         clearProgressCookie();
                     }
