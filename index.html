@@ -908,13 +908,17 @@
         const PROGRESS_COOKIE_DAYS = 30;
         const INVALID_GRADE_PATTERN = /[^ABCF]/g;
 
+        function cookieAttributes() {
+            let attributes = 'path=/; SameSite=Strict';
+            if (location.protocol === 'https:') {
+                attributes += '; Secure';
+            }
+            return attributes;
+        }
+
         function setCookie(name, value, days) {
             const expires = new Date(Date.now() + days * MILLISECONDS_PER_DAY).toUTCString();
-            let cookieValue = `${name}=${value}; expires=${expires}; path=/; SameSite=Strict`;
-            if (location.protocol === 'https:') {
-                cookieValue += '; Secure';
-            }
-            document.cookie = cookieValue;
+            document.cookie = `${name}=${value}; expires=${expires}; ${cookieAttributes()}`;
         }
 
         function getCookie(name) {
@@ -924,7 +928,7 @@
         }
 
         function clearProgressCookie() {
-            document.cookie = `${PROGRESS_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/`;
+            document.cookie = `${PROGRESS_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; ${cookieAttributes()}`;
         }
 
         function buildCountsFromGrades(gradeHistory) {
@@ -977,7 +981,7 @@
                 const sanitizedGrades = trimmedHistory.replace(INVALID_GRADE_PATTERN, '');
                 const maxLength = Math.min(sanitizedGrades.length, files.length);
                 const rawIndex = typeof parsed.currentIndex === 'number' ? parsed.currentIndex : maxLength;
-                const normalizedIndex = rawIndex > 0 ? rawIndex : maxLength;
+                const normalizedIndex = rawIndex > 0 ? rawIndex : (maxLength > 0 ? maxLength : 0);
                 const targetIndex = Math.min(normalizedIndex, maxLength);
                 const gradeHistory = sanitizedGrades.slice(0, targetIndex);
 
