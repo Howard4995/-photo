@@ -880,7 +880,7 @@
             <div id="summary-results"></div>
             <div style="text-align: center; margin-top: 30px;">
                 <!-- 🟢 貓咪融合重新開始按鈕 -->
-                <div class="cat-btn-group" onclick="location.reload()">
+                <div class="cat-btn-group" onclick="restartReview()">
                     <svg viewBox="0 0 313 280" fill="none" class="cat-svg-peeking">
                         <g class="pet-group">
                             <ellipse cx="156.5" cy="170" rx="140" ry="110" class="pet-body"></ellipse>
@@ -902,6 +902,123 @@
         let currentIndex = 0;
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
+        const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+        const VALID_GRADES = 'ABCF';
+        const PROGRESS_COOKIE_NAME = 'photo-review-progress';
+        const PROGRESS_COOKIE_DAYS = 30;
+        const MAX_COOKIE_VALUE_LENGTH = 3500;
+        const INVALID_GRADE_PATTERN = /[^ABCF]/g;
+
+        function cookieAttributes() {
+            let attributes = 'path=/; SameSite=Strict';
+            if (location.protocol === 'https:') {
+                attributes += '; Secure';
+            }
+            return attributes;
+        }
+
+        function setCookie(name, value, days) {
+            const expires = new Date(Date.now() + days * MILLISECONDS_PER_DAY).toUTCString();
+            document.cookie = `${name}=${value}; expires=${expires}; ${cookieAttributes()}`;
+        }
+
+        function getCookie(name) {
+            const prefix = `${name}=`;
+            const cookie = document.cookie.split('; ').find(row => row.startsWith(prefix));
+            return cookie ? cookie.slice(prefix.length) : '';
+        }
+
+        function clearProgressCookie() {
+            document.cookie = `${PROGRESS_COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; ${cookieAttributes()}`;
+        }
+
+        function buildCountsFromGrades(gradeHistory) {
+            const nextCounts = { A: 0, B: 0, C: 0, F: 0 };
+            for (const grade of gradeHistory) {
+                if (VALID_GRADES.includes(grade)) {
+                    nextCounts[grade]++;
+                }
+            }
+            return nextCounts;
+        }
+
+        function buildResultsFromGrades(gradeHistory, files) {
+            const list = [];
+            const limit = Math.min(gradeHistory.length, files.length);
+            for (let i = 0; i < limit; i++) {
+                const fileUrl = files[i];
+                const fileName = fileUrl.split('/').pop();
+                list.push({ name: fileName, grade: gradeHistory[i] });
+            }
+            return list;
+        }
+
+        function saveProgressCookie() {
+            if (!images.length) {
+                clearProgressCookie();
+                return;
+            }
+
+            const maxHistoryLength = Math.min(images.length, results.length);
+            const gradeHistory = results
+                .map(res => (VALID_GRADES.includes(res.grade) ? res.grade : ''))
+                .join('')
+                .slice(0, maxHistoryLength);
+            const payload = {
+                v: 1,
+                currentIndex,
+                gradeHistory
+            };
+            const encodedPayload = encodeURIComponent(JSON.stringify(payload));
+            if (encodedPayload.length > MAX_COOKIE_VALUE_LENGTH) {
+                console.warn('進度資料過大，無法寫入 Cookie.');
+                return;
+            }
+
+            setCookie(PROGRESS_COOKIE_NAME, encodedPayload, PROGRESS_COOKIE_DAYS);
+        }
+
+        function loadProgressCookie(files) {
+            const raw = getCookie(PROGRESS_COOKIE_NAME);
+            if (!raw) return null;
+
+            try {
+                const parsed = JSON.parse(decodeURIComponent(raw));
+                if (!parsed || typeof parsed.gradeHistory !== 'string') return null;
+
+                const maxHistoryLength = files.length;
+                const trimmedHistory = parsed.gradeHistory.slice(0, maxHistoryLength);
+                const sanitizedGrades = trimmedHistory.replace(INVALID_GRADE_PATTERN, '');
+                if (sanitizedGrades.length !== trimmedHistory.length) {
+                    console.warn('進度資料包含無效評分，已自動忽略.');
+                }
+                const maxLength = Math.min(sanitizedGrades.length, files.length);
+                const rawIndex = typeof parsed.currentIndex === 'number' ? parsed.currentIndex : maxLength;
+                // 若索引為 0 但有歷史評分，改用歷史長度避免遺失進度
+                let normalizedIndex = rawIndex;
+                if (normalizedIndex <= 0 && maxLength > 0) {
+                    normalizedIndex = maxLength;
+                } else if (normalizedIndex < 0) {
+                    normalizedIndex = 0;
+                }
+                const targetIndex = Math.min(normalizedIndex, maxLength);
+                const gradeHistory = sanitizedGrades.slice(0, targetIndex);
+
+                return {
+                    currentIndex: targetIndex,
+                    results: buildResultsFromGrades(gradeHistory, files),
+                    counts: buildCountsFromGrades(gradeHistory)
+                };
+            } catch (err) {
+                console.error('讀取進度 Cookie 失敗，格式可能損壞或非預期', err);
+                return null;
+            }
+        }
+
+        function restartReview() {
+            clearProgressCookie();
+            location.reload();
+        }
 
         // 預載音效檔案
         const sounds = {
@@ -926,6 +1043,25 @@
                 currentIndex = 0;
                 results = [];
                 counts = { A: 0, B: 0, C: 0, F: 0 };
+
+                const savedProgress = loadProgressCookie(files);
+                if (savedProgress) {
+                    let shouldUseSaved = false;
+                    if (savedProgress.currentIndex >= files.length) {
+                        shouldUseSaved = confirm('偵測到上次審核已完成，是否要查看總結？');
+                    } else if (savedProgress.currentIndex > 0) {
+                        shouldUseSaved = confirm('偵測到上次未完成的審核進度，是否要繼續？');
+                    }
+
+                    if (shouldUseSaved) {
+                        currentIndex = savedProgress.currentIndex;
+                        results = savedProgress.results;
+                        counts = savedProgress.counts;
+                    } else {
+                        clearProgressCookie();
+                    }
+                }
+
                 updateLiveStatsUI();
 
                 // 移除首頁背景 class，使審核畫面乾淨
@@ -935,7 +1071,11 @@
                 document.getElementById('upload-section').style.display = 'none';
                 document.getElementById('review-section').style.display = 'block';
                 
-                showImage();
+                if (currentIndex >= images.length) {
+                    showSummary();
+                } else {
+                    showImage();
+                }
             } catch (err) {
                 alert('載入圖片清單失敗 (請確認有執行產生 images.json 腳本並允許本地讀取)：' + err);
                 console.error(err);
@@ -996,6 +1136,7 @@
             updateLiveStatsUI();
             
             currentIndex++;
+            saveProgressCookie();
             
             // 延遲 300ms 讓使用者可以看見特效
             setTimeout(() => {
@@ -1052,6 +1193,7 @@
                 }
                 
                 showImage();
+                saveProgressCookie();
             }
         }
 
