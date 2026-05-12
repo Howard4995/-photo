@@ -918,7 +918,7 @@
         // 預留編碼與欄位空間，避免超過單一 Cookie 約 4KB 限制
         const PROGRESS_CHUNK_SIZE = 3500;
         // 限制最大 chunk 數量，避免異常狀況下清理過久
-        const MAX_COOKIE_CHUNKS = 1000;
+        const MAX_COOKIE_CHUNKS = 100;
 
         function setCookie(name, value, days) {
             const maxAge = days * 24 * 60 * 60;
@@ -949,10 +949,11 @@
 
         function clearProgressCookies() {
             deleteCookie(PROGRESS_COOKIE_META);
-            let index = 0;
-            while (getCookie(`${PROGRESS_COOKIE_PREFIX}${index}`) !== null) {
+            for (let index = 0; index < MAX_COOKIE_CHUNKS; index++) {
+                if (getCookie(`${PROGRESS_COOKIE_PREFIX}${index}`) === null) {
+                    break;
+                }
                 deleteCookie(`${PROGRESS_COOKIE_PREFIX}${index}`);
-                index += 1;
             }
         }
 
@@ -1004,10 +1005,8 @@
             const grades = typeof saved.grades === 'string' ? saved.grades.split('') : [];
             const safeLength = Math.min(grades.length, list.length);
             const savedIndex = Number(saved.index);
-            const targetIndex = Math.min(
-                Number.isFinite(savedIndex) ? savedIndex : safeLength,
-                safeLength
-            );
+            const normalizedIndex = Number.isFinite(savedIndex) ? savedIndex : safeLength;
+            const targetIndex = Math.min(normalizedIndex, safeLength);
             const restoredResults = [];
             const restoredCounts = { A: 0, B: 0, C: 0, F: 0 };
             for (let i = 0; i < targetIndex; i++) {
