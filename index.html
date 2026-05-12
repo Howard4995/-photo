@@ -1010,7 +1010,7 @@
             const restoredCounts = { A: 0, B: 0, C: 0, F: 0 };
             for (let i = 0; i < targetIndex; i++) {
                 const grade = grades[i];
-                if (!restoredCounts.hasOwnProperty(grade)) {
+                if (!(grade in restoredCounts)) {
                     break;
                 }
                 const fileName = list[i].split('/').pop();
