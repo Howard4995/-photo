@@ -959,7 +959,7 @@
 
         function saveProgressCookies(payload) {
             const serialized = JSON.stringify(payload);
-            const previousChunkCount = Math.min(parseInt(getCookie(PROGRESS_COOKIE_META) || '0', 10), MAX_COOKIE_CHUNKS);
+            const existingChunkCount = Math.min(parseInt(getCookie(PROGRESS_COOKIE_META) || '0', 10), MAX_COOKIE_CHUNKS);
             const chunks = [];
             for (let i = 0; i < serialized.length; i += PROGRESS_CHUNK_SIZE) {
                 chunks.push(serialized.slice(i, i + PROGRESS_CHUNK_SIZE));
@@ -968,7 +968,7 @@
             chunks.forEach((chunk, index) => {
                 setCookie(`${PROGRESS_COOKIE_PREFIX}${index}`, chunk, PROGRESS_COOKIE_DAYS);
             });
-            for (let i = chunks.length; i < previousChunkCount; i++) {
+            for (let i = chunks.length; i < existingChunkCount; i++) {
                 deleteCookie(`${PROGRESS_COOKIE_PREFIX}${i}`);
             }
         }
@@ -1002,7 +1002,11 @@
         }
 
         function restoreProgress(saved, list) {
-            const grades = typeof saved.grades === 'string' ? saved.grades.split('') : [];
+            const gradeString = typeof saved.grades === 'string' ? saved.grades : '';
+            if (typeof saved.grades !== 'string') {
+                console.warn('Cookie 進度資料格式異常，將以空白進度繼續');
+            }
+            const grades = gradeString.split('');
             const safeLength = Math.min(grades.length, list.length);
             const savedIndex = Number(saved.index);
             const normalizedIndex = Number.isFinite(savedIndex) ? savedIndex : safeLength;
@@ -1012,6 +1016,7 @@
             for (let i = 0; i < targetIndex; i++) {
                 const grade = grades[i];
                 if (!(grade in restoredCounts)) {
+                    console.warn('偵測到無效評分資料，已停止還原後續進度');
                     break;
                 }
                 const fileName = list[i].split('/').pop();
