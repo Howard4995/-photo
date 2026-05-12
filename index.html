@@ -880,7 +880,7 @@
             <div id="summary-results"></div>
             <div style="text-align: center; margin-top: 30px;">
                 <!-- 🟢 貓咪融合重新開始按鈕 -->
-                <div class="cat-btn-group" onclick="location.reload()">
+                <div class="cat-btn-group" onclick="restartReview()">
                     <svg viewBox="0 0 313 280" fill="none" class="cat-svg-peeking">
                         <g class="pet-group">
                             <ellipse cx="156.5" cy="170" rx="140" ry="110" class="pet-body"></ellipse>
@@ -902,6 +902,7 @@
         let currentIndex = 0;
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
+        let gradeHistory = '';
 
         // 預載音效檔案
         const sounds = {
@@ -910,6 +911,125 @@
             C: new Audio('c.mp3'),
             F: new Audio('f.mp3')
         };
+
+        const PROGRESS_COOKIE_META = 'reviewProgressMetaV1';
+        const PROGRESS_COOKIE_PREFIX = 'reviewProgressChunkV1_';
+        const PROGRESS_COOKIE_DAYS = 30;
+        // 預留編碼與欄位空間，避免超過單一 Cookie 約 4KB 限制
+        const PROGRESS_CHUNK_SIZE = 3500;
+        // 限制最大 chunk 數量，避免異常狀況下清理過久
+        const MAX_COOKIE_CHUNKS = 100;
+
+        function setCookie(name, value, days) {
+            const maxAge = days * 24 * 60 * 60;
+            document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAge}; path=/; SameSite=Lax`;
+        }
+
+        function getCookie(name) {
+            const cookies = document.cookie ? document.cookie.split('; ') : [];
+            for (let i = 0; i < cookies.length; i++) {
+                const [cookieName, ...rest] = cookies[i].split('=');
+                if (cookieName === name) {
+                    return decodeURIComponent(rest.join('='));
+                }
+            }
+            return null;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = `${name}=; max-age=0; path=/; SameSite=Lax`;
+        }
+
+        function buildImageSignature(list) {
+            if (!list || list.length === 0) return '0';
+            const first = list[0] || '';
+            const last = list[list.length - 1] || '';
+            return `${list.length}:${first}:${last}`;
+        }
+
+        function clearProgressCookies() {
+            deleteCookie(PROGRESS_COOKIE_META);
+            for (let index = 0; index < MAX_COOKIE_CHUNKS; index++) {
+                if (getCookie(`${PROGRESS_COOKIE_PREFIX}${index}`) === null) {
+                    break;
+                }
+                deleteCookie(`${PROGRESS_COOKIE_PREFIX}${index}`);
+            }
+        }
+
+        function saveProgressCookies(payload) {
+            const serialized = JSON.stringify(payload);
+            const existingChunkCount = Math.min(parseInt(getCookie(PROGRESS_COOKIE_META) || '0', 10), MAX_COOKIE_CHUNKS);
+            const chunks = [];
+            for (let i = 0; i < serialized.length; i += PROGRESS_CHUNK_SIZE) {
+                chunks.push(serialized.slice(i, i + PROGRESS_CHUNK_SIZE));
+            }
+            setCookie(PROGRESS_COOKIE_META, String(chunks.length), PROGRESS_COOKIE_DAYS);
+            chunks.forEach((chunk, index) => {
+                setCookie(`${PROGRESS_COOKIE_PREFIX}${index}`, chunk, PROGRESS_COOKIE_DAYS);
+            });
+            for (let i = chunks.length; i < existingChunkCount; i++) {
+                deleteCookie(`${PROGRESS_COOKIE_PREFIX}${i}`);
+            }
+        }
+
+        function loadProgressCookies() {
+            const chunkCount = parseInt(getCookie(PROGRESS_COOKIE_META) || '0', 10);
+            if (!chunkCount) return null;
+            let serialized = '';
+            for (let i = 0; i < chunkCount; i++) {
+                const chunk = getCookie(`${PROGRESS_COOKIE_PREFIX}${i}`);
+                if (chunk === null) return null;
+                serialized += chunk;
+            }
+            try {
+                return JSON.parse(serialized);
+            } catch (e) {
+                console.error('解析 Cookie 進度失敗', e);
+                return null;
+            }
+        }
+
+        function persistProgress() {
+            if (!images.length) return;
+            saveProgressCookies({
+                version: 1,
+                index: currentIndex,
+                grades: gradeHistory,
+                imageSignature: buildImageSignature(images),
+                updatedAt: Date.now()
+            });
+        }
+
+        function restoreProgress(saved, list) {
+            const gradeString = typeof saved.grades === 'string' ? saved.grades : '';
+            if (typeof saved.grades !== 'string') {
+                console.warn('Cookie 進度資料格式異常，將以空白進度繼續');
+            }
+            const grades = gradeString.split('');
+            const safeLength = Math.min(grades.length, list.length);
+            const savedIndex = Number(saved.index);
+            const normalizedIndex = Number.isFinite(savedIndex) ? savedIndex : safeLength;
+            const targetIndex = Math.min(normalizedIndex, safeLength);
+            const restoredResults = [];
+            const restoredCounts = { A: 0, B: 0, C: 0, F: 0 };
+            for (let i = 0; i < targetIndex; i++) {
+                const grade = grades[i];
+                if (!(grade in restoredCounts)) {
+                    console.warn('偵測到無效評分資料，已停止還原後續進度');
+                    break;
+                }
+                const fileName = list[i].split('/').pop();
+                restoredResults.push({ name: fileName, grade });
+                restoredCounts[grade]++;
+            }
+            return {
+                results: restoredResults,
+                counts: restoredCounts,
+                index: restoredResults.length,
+                grades: grades.slice(0, restoredResults.length).join('')
+            };
+        }
 
         async function startReview() {
             try {
@@ -923,9 +1043,36 @@
                 }
 
                 images = files;
-                currentIndex = 0;
-                results = [];
-                counts = { A: 0, B: 0, C: 0, F: 0 };
+                const imageSignature = buildImageSignature(images);
+                const savedProgress = loadProgressCookies();
+                const hasValidProgress = savedProgress && savedProgress.imageSignature === imageSignature;
+
+                if (savedProgress && savedProgress.imageSignature !== imageSignature) {
+                    clearProgressCookies();
+                }
+
+                if (hasValidProgress && typeof savedProgress.grades === 'string' && savedProgress.grades.length > 0) {
+                    const shouldResume = confirm('偵測到上次審核進度，是否要繼續？');
+                    if (shouldResume) {
+                        const restored = restoreProgress(savedProgress, images);
+                        currentIndex = restored.index;
+                        results = restored.results;
+                        counts = restored.counts;
+                        gradeHistory = restored.grades;
+                    } else {
+                        clearProgressCookies();
+                        currentIndex = 0;
+                        results = [];
+                        counts = { A: 0, B: 0, C: 0, F: 0 };
+                        gradeHistory = '';
+                    }
+                } else {
+                    currentIndex = 0;
+                    results = [];
+                    counts = { A: 0, B: 0, C: 0, F: 0 };
+                    gradeHistory = '';
+                }
+
                 updateLiveStatsUI();
 
                 // 移除首頁背景 class，使審核畫面乾淨
@@ -934,8 +1081,14 @@
                 document.getElementById('profile-section').style.display = 'none';
                 document.getElementById('upload-section').style.display = 'none';
                 document.getElementById('review-section').style.display = 'block';
-                
-                showImage();
+
+                if (currentIndex >= images.length) {
+                    showSummary();
+                } else {
+                    showImage();
+                }
+
+                persistProgress();
             } catch (err) {
                 alert('載入圖片清單失敗 (請確認有執行產生 images.json 腳本並允許本地讀取)：' + err);
                 console.error(err);
@@ -991,11 +1144,13 @@
                 name: currentFileName,
                 grade: grade
             });
+            gradeHistory += grade;
             
             counts[grade]++;
             updateLiveStatsUI();
             
             currentIndex++;
+            persistProgress();
             
             // 延遲 300ms 讓使用者可以看見特效
             setTimeout(() => {
@@ -1044,6 +1199,8 @@
                 updateLiveStatsUI();
                 
                 currentIndex--;
+                gradeHistory = gradeHistory.slice(0, -1);
+                persistProgress();
                 
                 // 如果已經顯示了 summary，需要隱藏並顯示 review
                 if (document.getElementById('summary-section').style.display === 'block') {
@@ -1060,6 +1217,11 @@
             document.getElementById('stat-B').innerText = counts.B;
             document.getElementById('stat-C').innerText = counts.C;
             document.getElementById('stat-F').innerText = counts.F;
+        }
+
+        function restartReview() {
+            clearProgressCookies();
+            location.reload();
         }
 
         // 🟢 修改為非同步函數 async function
