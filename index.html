@@ -902,6 +902,7 @@
         let currentIndex = 0;
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
+        let gradeHistory = '';
 
         // 預載音效檔案
         const sounds = {
@@ -988,11 +989,10 @@
 
         function persistProgress() {
             if (!images.length) return;
-            const grades = results.map((res) => res.grade).join('');
             saveProgressCookies({
                 version: 1,
                 index: currentIndex,
-                grades,
+                grades: gradeHistory,
                 imageSignature: buildImageSignature(images),
                 updatedAt: Date.now()
             });
@@ -1020,7 +1020,8 @@
             return {
                 results: restoredResults,
                 counts: restoredCounts,
-                index: restoredResults.length
+                index: restoredResults.length,
+                grades: grades.slice(0, restoredResults.length).join('')
             };
         }
 
@@ -1051,16 +1052,19 @@
                         currentIndex = restored.index;
                         results = restored.results;
                         counts = restored.counts;
+                        gradeHistory = restored.grades;
                     } else {
                         clearProgressCookies();
                         currentIndex = 0;
                         results = [];
                         counts = { A: 0, B: 0, C: 0, F: 0 };
+                        gradeHistory = '';
                     }
                 } else {
                     currentIndex = 0;
                     results = [];
                     counts = { A: 0, B: 0, C: 0, F: 0 };
+                    gradeHistory = '';
                 }
 
                 updateLiveStatsUI();
@@ -1134,6 +1138,7 @@
                 name: currentFileName,
                 grade: grade
             });
+            gradeHistory += grade;
             
             counts[grade]++;
             updateLiveStatsUI();
@@ -1188,6 +1193,7 @@
                 updateLiveStatsUI();
                 
                 currentIndex--;
+                gradeHistory = gradeHistory.slice(0, -1);
                 persistProgress();
                 
                 // 如果已經顯示了 summary，需要隱藏並顯示 review
