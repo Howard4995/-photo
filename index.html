@@ -915,6 +915,7 @@
         const PROGRESS_COOKIE_META = 'reviewProgressMetaV1';
         const PROGRESS_COOKIE_PREFIX = 'reviewProgressChunkV1_';
         const PROGRESS_COOKIE_DAYS = 30;
+        // 預留編碼與欄位空間，避免超過單一 Cookie 約 4KB 限制
         const PROGRESS_CHUNK_SIZE = 3500;
 
         function setCookie(name, value, days) {
