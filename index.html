@@ -956,6 +956,7 @@
 
         function saveProgressCookies(payload) {
             const serialized = JSON.stringify(payload);
+            const previousChunkCount = Math.min(parseInt(getCookie(PROGRESS_COOKIE_META) || '0', 10), 1000);
             const chunks = [];
             for (let i = 0; i < serialized.length; i += PROGRESS_CHUNK_SIZE) {
                 chunks.push(serialized.slice(i, i + PROGRESS_CHUNK_SIZE));
@@ -964,10 +965,8 @@
             chunks.forEach((chunk, index) => {
                 setCookie(`${PROGRESS_COOKIE_PREFIX}${index}`, chunk, PROGRESS_COOKIE_DAYS);
             });
-            let extraIndex = chunks.length;
-            while (getCookie(`${PROGRESS_COOKIE_PREFIX}${extraIndex}`) !== null) {
-                deleteCookie(`${PROGRESS_COOKIE_PREFIX}${extraIndex}`);
-                extraIndex += 1;
+            for (let i = chunks.length; i < previousChunkCount; i++) {
+                deleteCookie(`${PROGRESS_COOKIE_PREFIX}${i}`);
             }
         }
 
@@ -1042,7 +1041,7 @@
                 const savedProgress = loadProgressCookies();
                 const hasValidProgress = savedProgress && savedProgress.imageSignature === imageSignature;
 
-                if (savedProgress && !hasValidProgress) {
+                if (savedProgress && savedProgress.imageSignature !== imageSignature) {
                     clearProgressCookies();
                 }
 
