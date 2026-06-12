@@ -903,6 +903,32 @@
         let results = [];
         let counts = { A: 0, B: 0, C: 0, F: 0 };
         let gradeHistory = '';
+        // 本次隨機洗牌使用的種子；保存進 Cookie 以便恢復進度時重現相同順序
+        let shuffleSeed = null;
+        // 以原始 images.json 順序計算的簽章，洗牌後仍須保持穩定以正確比對進度
+        let progressImageSignature = '0';
+
+        // 以種子產生可重現的偽隨機數 (mulberry32)
+        function createSeededRandom(seed) {
+            let state = seed >>> 0;
+            return function () {
+                state = (state + 0x6D2B79F5) | 0;
+                let t = Math.imul(state ^ (state >>> 15), 1 | state);
+                t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+
+        // 以種子對清單做 Fisher-Yates 洗牌，回傳新陣列 (不更動原清單)
+        function shuffleWithSeed(list, seed) {
+            const shuffled = list.slice();
+            const random = createSeededRandom(seed);
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
 
         // 預載音效檔案
         const sounds = {
@@ -996,7 +1022,8 @@
                 version: 1,
                 index: currentIndex,
                 grades: gradeHistory,
-                imageSignature: buildImageSignature(images),
+                imageSignature: progressImageSignature,
+                seed: shuffleSeed,
                 updatedAt: Date.now()
             });
         }
@@ -1042,8 +1069,10 @@
                     return;
                 }
 
-                images = files;
-                const imageSignature = buildImageSignature(images);
+                // 以原始順序計算簽章，洗牌不影響進度比對
+                const originalFiles = files;
+                progressImageSignature = buildImageSignature(originalFiles);
+                const imageSignature = progressImageSignature;
                 const savedProgress = loadProgressCookies();
                 const hasValidProgress = savedProgress && savedProgress.imageSignature === imageSignature;
 
@@ -1051,22 +1080,32 @@
                     clearProgressCookies();
                 }
 
-                if (hasValidProgress && typeof savedProgress.grades === 'string' && savedProgress.grades.length > 0) {
-                    const shouldResume = confirm('偵測到上次審核進度，是否要繼續？');
-                    if (shouldResume) {
-                        const restored = restoreProgress(savedProgress, images);
-                        currentIndex = restored.index;
-                        results = restored.results;
-                        counts = restored.counts;
-                        gradeHistory = restored.grades;
-                    } else {
-                        clearProgressCookies();
-                        currentIndex = 0;
-                        results = [];
-                        counts = { A: 0, B: 0, C: 0, F: 0 };
-                        gradeHistory = '';
-                    }
+                // 僅在進度有效且帶有可用種子時才提供恢復；否則一律重新隨機洗牌
+                const savedSeed = savedProgress ? Number(savedProgress.seed) : NaN;
+                const canResume = hasValidProgress
+                    && typeof savedProgress.grades === 'string'
+                    && savedProgress.grades.length > 0
+                    && Number.isFinite(savedSeed);
+
+                let shouldResume = false;
+                if (canResume) {
+                    shouldResume = confirm('偵測到上次審核進度，是否要繼續？');
+                }
+
+                if (shouldResume) {
+                    // 用上次的種子重現相同的隨機順序，評分才能正確對應到圖片
+                    shuffleSeed = savedSeed >>> 0;
+                    images = shuffleWithSeed(originalFiles, shuffleSeed);
+                    const restored = restoreProgress(savedProgress, images);
+                    currentIndex = restored.index;
+                    results = restored.results;
+                    counts = restored.counts;
+                    gradeHistory = restored.grades;
                 } else {
+                    // 全新一輪：產生新種子並隨機洗牌
+                    clearProgressCookies();
+                    shuffleSeed = Math.floor(Math.random() * 0x100000000) >>> 0;
+                    images = shuffleWithSeed(originalFiles, shuffleSeed);
                     currentIndex = 0;
                     results = [];
                     counts = { A: 0, B: 0, C: 0, F: 0 };
